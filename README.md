@@ -68,6 +68,16 @@ I chose the risk scoring weights, I designed the API contracts, and I can walk t
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8.svg)
 ![Claude API](https://img.shields.io/badge/Claude-API-orange.svg)
 
+## Documentation
+
+This project is fully documented across three key documents:
+
+- **[CLAUDE.md](CLAUDE.md)** — Project briefing for AI-assisted development. Contains code conventions, ownership boundaries, testing requirements, and development workflow.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — Complete system architecture, database schema, API endpoint design, and technical decisions.
+- **[PRD.md](PRD.md)** — Product Requirements Document with user journeys, screen specifications, design system, feature priorities by phase, and success metrics.
+
+**Open Questions:** See [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) for tracking decisions that need to be made during development.
+
 ## Architecture Decision Records
 
 **PostgreSQL over MongoDB:** Real estate data is inherently relational. A property has many deals, a user has many properties, deals have financial projections tied to market data snapshots. PostgreSQL handles this naturally and is the industry standard for financial data.
