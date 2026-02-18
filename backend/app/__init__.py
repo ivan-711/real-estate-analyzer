@@ -1,0 +1,1 @@
+"""MidwestDealAnalyzer backend application."""
