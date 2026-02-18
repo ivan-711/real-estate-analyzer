@@ -690,17 +690,17 @@ These are features someone might reasonably expect but that we are intentionally
 
 ## 13. Open Questions
 
-These need answers before or during Phase 1. Track decisions here.
+All Phase 1 open questions have been resolved. See OPEN_QUESTIONS.md for decision log.
 
 | # | Question | Status | Decision |
 |---|----------|--------|----------|
-| 1 | Domain name — midwestdealanalyzer.com? .dev? .app? | Open | Check availability and price |
-| 2 | RentCast free tier — is 50 calls/month enough for dev + demo? | Open | Test during Phase 1, may need paid tier |
-| 3 | Sample data property — which specific Sheboygan address for "Try with sample data"? | Open | Pick a real duplex listing, hard-code the pre-filled data |
-| 4 | Chart library — Recharts vs Chart.js? | Open | Prototype both in Phase 3, pick whichever is simpler |
-| 5 | Auth — support Google OAuth in addition to email/password? | Open | Email/password for MVP, OAuth is Phase 4 stretch |
-| 6 | Chat streaming — SSE vs WebSocket? | Open | Decide in Phase 2. SSE is simpler, WebSocket is more flexible |
-| 7 | React Bits Dock navigation — use it or go with standard sidebar? | Open | Standard sidebar for Phase 1, evaluate Dock in Phase 4 |
+| 1 | Domain name — midwestdealanalyzer.com? .dev? .app? | Resolved | Deploy to *.vercel.app subdomain for Phase 1. Buy custom domain later. |
+| 2 | RentCast free tier — is 50 calls/month enough for dev + demo? | Resolved | Free tier (50 calls/month) is sufficient. Mock all calls in dev/test. Cache 30 days in production. |
+| 3 | Sample data property — which specific Sheboygan address for "Try with sample data"? | Resolved | 1515 N 7th St, Sheboygan WI 53081. Duplex, $220,000, 5 bed / 2 bath, 2,330 sqft, built 1900. Hard-code this for the "Try with sample data" button. |
+| 4 | Chart library — Recharts vs Chart.js? | Resolved | Recharts. React-native, JSX composable, works with Tailwind. |
+| 5 | Auth — support Google OAuth in addition to email/password? | Resolved | Email/password only. No Google OAuth for MVP. |
+| 6 | Chat streaming — SSE vs WebSocket? | Resolved | SSE (Server-Sent Events). Simpler than WebSocket, sufficient for one-direction streaming. |
+| 7 | React Bits Dock navigation — use it or go with standard sidebar? | Resolved | Standard sidebar. No React Bits Dock. |
 
 ---
 
