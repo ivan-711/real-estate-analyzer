@@ -1,0 +1,30 @@
+diff --git a/backend/app/main.py b/backend/app/main.py
+@@
+-from app.config import settings
+-from app.routers import auth
+-from fastapi import FastAPI
+-from fastapi.middleware.cors import CORSMiddleware
++from app.config import settings
++from app.routers import auth
++from fastapi import FastAPI
++from fastapi.middleware.cors import CORSMiddleware
+@@
+-from app.routers import auth
+-
+diff --git a/backend/app/models/refresh_token.py b/backend/app/models/refresh_token.py
+@@
++from __future__ import annotations
+@@
+-    user = relationship(User, back_populates="refresh_tokens")
++    user = relationship("User", back_populates="refresh_tokens")
+diff --git a/backend/app/models/user.py b/backend/app/models/user.py
+@@
++from __future__ import annotations
+@@
+-    refresh_tokens = relationship(RefreshToken, back_populates="user", cascade="all, delete-orphan")
++    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+diff --git a/tests/test_api_auth.py b/tests/test_api_auth.py
+@@
+-from app.main import app
++from app.main import app
++from fastapi.testclient import TestClient

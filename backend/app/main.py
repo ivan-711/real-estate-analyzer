@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.routers import auth
 
 # Initialize Sentry if DSN is provided
 if settings.sentry_dsn_backend:
@@ -39,12 +40,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Router registration will be added here as routers are created
-# Example:
-# from app.routers import auth, deals, properties
-# app.include_router(auth.router)
-# app.include_router(deals.router)
-# app.include_router(properties.router)
+app.include_router(auth.router)
 
 
 @app.get("/")
