@@ -1,13 +1,12 @@
 from __future__ import annotations
 
+from app.config import settings
+from app.routers import auth, deals, properties
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import settings
-from app.routers import auth
-
-# Initialize Sentry if DSN is provided
-if settings.sentry_dsn_backend:
+# Initialize Sentry only when DSN looks valid.
+if settings.sentry_dsn_backend and "://" in settings.sentry_dsn_backend:
     import sentry_sdk
     from sentry_sdk.integrations.fastapi import FastApiIntegration
     from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
@@ -41,6 +40,8 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(properties.router)
+app.include_router(deals.router)
 
 
 @app.get("/")

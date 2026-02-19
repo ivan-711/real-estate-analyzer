@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from app.config import settings
 from app.database import get_db
@@ -26,7 +27,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(user_id: uuid.UUID) -> str:
-    """Create a short-lived access token."""
+    """Create a short-lived access token (jti ensures uniqueness per issuance)."""
     now = datetime.now(timezone.utc)
     expire = now + timedelta(minutes=settings.jwt_access_token_expire_minutes)
     payload = {
@@ -34,6 +35,7 @@ def create_access_token(user_id: uuid.UUID) -> str:
         "type": "access",
         "exp": int(expire.timestamp()),
         "iat": int(now.timestamp()),
+        "jti": str(uuid.uuid4()),
     }
     return jwt.encode(
         payload,
@@ -43,7 +45,7 @@ def create_access_token(user_id: uuid.UUID) -> str:
 
 
 def create_refresh_token(user_id: uuid.UUID) -> str:
-    """Create a long-lived refresh token."""
+    """Create a long-lived refresh token (jti ensures uniqueness for DB storage)."""
     now = datetime.now(timezone.utc)
     expire = now + timedelta(days=settings.jwt_refresh_token_expire_days)
     payload = {
@@ -51,6 +53,7 @@ def create_refresh_token(user_id: uuid.UUID) -> str:
         "type": "refresh",
         "exp": int(expire.timestamp()),
         "iat": int(now.timestamp()),
+        "jti": str(uuid.uuid4()),
     }
     return jwt.encode(
         payload,
@@ -59,7 +62,7 @@ def create_refresh_token(user_id: uuid.UUID) -> str:
     )
 
 
-def decode_token(token: str) -> dict | None:
+def decode_token(token: str) -> Optional[dict]:
     """Decode and verify a JWT. Returns payload or None if invalid/expired."""
     try:
         payload = jwt.decode(

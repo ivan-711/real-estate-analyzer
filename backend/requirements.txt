@@ -21,8 +21,9 @@ redis==5.0.1
 # Monitoring
 sentry-sdk[fastapi]==1.40.0
 
-# Authentication
+# Authentication (bcrypt>=4 breaks passlib 1.7.4 version detection)
 passlib[bcrypt]==1.7.4
+bcrypt<4.0.0
 python-jose[cryptography]==3.3.0
 
 # Testing

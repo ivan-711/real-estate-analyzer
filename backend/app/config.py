@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,15 +23,15 @@ class Settings(BaseSettings):
     )
 
     # External APIs
-    rentcast_api_key: str | None = Field(
+    rentcast_api_key: Optional[str] = Field(
         default=None,
         description="RentCast API key for property data lookup",
     )
-    mashvisor_api_key: str | None = Field(
+    mashvisor_api_key: Optional[str] = Field(
         default=None,
         description="Mashvisor API key for market analytics (Phase 3)",
     )
-    anthropic_api_key: str | None = Field(
+    anthropic_api_key: Optional[str] = Field(
         default=None,
         description="Anthropic Claude API key for chatbot (Phase 2)",
     )
@@ -61,11 +61,11 @@ class Settings(BaseSettings):
     )
 
     # Monitoring
-    sentry_dsn_backend: str | None = Field(
+    sentry_dsn_backend: Optional[str] = Field(
         default=None,
         description="Sentry DSN for backend error tracking",
     )
-    sentry_dsn_frontend: str | None = Field(
+    sentry_dsn_frontend: Optional[str] = Field(
         default=None,
         description="Sentry DSN for frontend error tracking",
     )

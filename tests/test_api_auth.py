@@ -1,12 +1,12 @@
 """
 Tests for JWT authentication API endpoints.
 """
+
 from __future__ import annotations
 
 import uuid
 
-import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 
 def _unique_email() -> str:
@@ -14,9 +14,9 @@ def _unique_email() -> str:
     return f"test-{uuid.uuid4().hex[:12]}@example.com"
 
 
-def test_register_success(client: TestClient) -> None:
+async def test_register_success(client: AsyncClient) -> None:
     """POST valid UserCreate returns 201 with access_token and refresh_token."""
-    response = client.post(
+    response = await client.post(
         "/api/v1/auth/register",
         json={
             "email": _unique_email(),
@@ -33,7 +33,7 @@ def test_register_success(client: TestClient) -> None:
     assert len(data["refresh_token"]) > 0
 
 
-def test_register_duplicate_email(client: TestClient) -> None:
+async def test_register_duplicate_email(client: AsyncClient) -> None:
     """Register same email twice returns 400 on second attempt."""
     email = _unique_email()
     payload = {
@@ -41,18 +41,18 @@ def test_register_duplicate_email(client: TestClient) -> None:
         "password": "password123",
         "full_name": "First User",
     }
-    first = client.post("/api/v1/auth/register", json=payload)
+    first = await client.post("/api/v1/auth/register", json=payload)
     assert first.status_code == 201
 
-    second = client.post("/api/v1/auth/register", json=payload)
+    second = await client.post("/api/v1/auth/register", json=payload)
     assert second.status_code == 400
     data = second.json()
     assert "Email already registered" in str(data.get("detail", data))
 
 
-def test_register_invalid_email(client: TestClient) -> None:
+async def test_register_invalid_email(client: AsyncClient) -> None:
     """Invalid email format returns 422."""
-    response = client.post(
+    response = await client.post(
         "/api/v1/auth/register",
         json={
             "email": "not-an-email",
@@ -63,9 +63,9 @@ def test_register_invalid_email(client: TestClient) -> None:
     assert response.status_code == 422
 
 
-def test_register_short_password(client: TestClient) -> None:
+async def test_register_short_password(client: AsyncClient) -> None:
     """Password shorter than 8 chars returns 422."""
-    response = client.post(
+    response = await client.post(
         "/api/v1/auth/register",
         json={
             "email": "shortpw@example.com",
@@ -76,10 +76,10 @@ def test_register_short_password(client: TestClient) -> None:
     assert response.status_code == 422
 
 
-def test_login_success(client: TestClient) -> None:
+async def test_login_success(client: AsyncClient) -> None:
     """POST valid credentials returns 200 with tokens."""
     email = _unique_email()
-    client.post(
+    await client.post(
         "/api/v1/auth/register",
         json={
             "email": email,
@@ -87,7 +87,7 @@ def test_login_success(client: TestClient) -> None:
             "full_name": "Login User",
         },
     )
-    response = client.post(
+    response = await client.post(
         "/api/v1/auth/login",
         json={"email": email, "password": "password123"},
     )
@@ -97,10 +97,10 @@ def test_login_success(client: TestClient) -> None:
     assert "refresh_token" in data
 
 
-def test_login_invalid_password(client: TestClient) -> None:
+async def test_login_invalid_password(client: AsyncClient) -> None:
     """Wrong password returns 401."""
     email = _unique_email()
-    client.post(
+    await client.post(
         "/api/v1/auth/register",
         json={
             "email": email,
@@ -108,16 +108,16 @@ def test_login_invalid_password(client: TestClient) -> None:
             "full_name": "User",
         },
     )
-    response = client.post(
+    response = await client.post(
         "/api/v1/auth/login",
         json={"email": email, "password": "wrongpassword"},
     )
     assert response.status_code == 401
 
 
-def test_login_nonexistent_email(client: TestClient) -> None:
+async def test_login_nonexistent_email(client: AsyncClient) -> None:
     """Unknown email returns 401."""
-    response = client.post(
+    response = await client.post(
         "/api/v1/auth/login",
         json={
             "email": "nonexistent@example.com",
@@ -127,9 +127,9 @@ def test_login_nonexistent_email(client: TestClient) -> None:
     assert response.status_code == 401
 
 
-def test_refresh_success(client: TestClient) -> None:
+async def test_refresh_success(client: AsyncClient) -> None:
     """POST valid refresh_token returns 200 with new access_token."""
-    reg = client.post(
+    reg = await client.post(
         "/api/v1/auth/register",
         json={
             "email": _unique_email(),
@@ -138,7 +138,7 @@ def test_refresh_success(client: TestClient) -> None:
         },
     )
     refresh_token = reg.json()["refresh_token"]
-    response = client.post(
+    response = await client.post(
         "/api/v1/auth/refresh",
         json={"refresh_token": refresh_token},
     )
@@ -149,19 +149,19 @@ def test_refresh_success(client: TestClient) -> None:
     assert data["access_token"] != reg.json()["access_token"]
 
 
-def test_refresh_invalid_token(client: TestClient) -> None:
+async def test_refresh_invalid_token(client: AsyncClient) -> None:
     """Invalid or expired refresh token returns 401."""
-    response = client.post(
+    response = await client.post(
         "/api/v1/auth/refresh",
         json={"refresh_token": "invalid-token"},
     )
     assert response.status_code == 401
 
 
-def test_me_authenticated(client: TestClient) -> None:
+async def test_me_authenticated(client: AsyncClient) -> None:
     """GET /me with valid Bearer returns 200 with UserResponse."""
     email = _unique_email()
-    reg = client.post(
+    reg = await client.post(
         "/api/v1/auth/register",
         json={
             "email": email,
@@ -170,7 +170,7 @@ def test_me_authenticated(client: TestClient) -> None:
         },
     )
     access_token = reg.json()["access_token"]
-    response = client.get(
+    response = await client.get(
         "/api/v1/auth/me",
         headers={"Authorization": f"Bearer {access_token}"},
     )
@@ -182,15 +182,15 @@ def test_me_authenticated(client: TestClient) -> None:
     assert "password_hash" not in data
 
 
-def test_me_unauthenticated(client: TestClient) -> None:
+async def test_me_unauthenticated(client: AsyncClient) -> None:
     """GET /me without token returns 401."""
-    response = client.get("/api/v1/auth/me")
+    response = await client.get("/api/v1/auth/me")
     assert response.status_code == 401
 
 
-def test_me_invalid_token(client: TestClient) -> None:
+async def test_me_invalid_token(client: AsyncClient) -> None:
     """GET /me with invalid Bearer returns 401."""
-    response = client.get(
+    response = await client.get(
         "/api/v1/auth/me",
         headers={"Authorization": "Bearer invalid-token"},
     )

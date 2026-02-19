@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -11,7 +12,7 @@ class UserCreate(BaseModel):
 
     email: EmailStr
     password: str = Field(..., min_length=8, description="Password (min 8 characters)")
-    full_name: str | None = None
+    full_name: Optional[str] = None
 
 
 class UserLogin(BaseModel):
@@ -28,7 +29,7 @@ class UserResponse(BaseModel):
 
     id: uuid.UUID
     email: str
-    full_name: str | None
+    full_name: Optional[str]
     created_at: datetime
     updated_at: datetime
 

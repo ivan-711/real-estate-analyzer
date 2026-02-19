@@ -37,7 +37,10 @@ async def _store_refresh_token(
     payload = decode_token(token)
     if not payload or "exp" not in payload:
         return
-    expires_at = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+    # Store as naive UTC to match DateTime(timezone=False) in the model
+    expires_at = datetime.fromtimestamp(payload["exp"], tz=timezone.utc).replace(
+        tzinfo=None
+    )
     refresh_token = RefreshToken(
         user_id=user_id,
         token=token,
