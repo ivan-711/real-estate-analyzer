@@ -5,7 +5,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-
 from app.services.risk_engine import RiskEngine
 
 SKIP_REASON = "awaiting developer implementation"
@@ -139,9 +138,7 @@ def test_score_population_growth_stub() -> None:
 @pytest.mark.skip(reason=SKIP_REASON)
 def test_score_concentration_stub() -> None:
     """Concentration scoring should penalize portfolios over 50% in one ZIP."""
-    RiskEngine._score_concentration(
-        pct_in_zip=SHEBOYGAN_PORTFOLIO_DATA["pct_in_zip"]
-    )
+    RiskEngine._score_concentration(pct_in_zip=SHEBOYGAN_PORTFOLIO_DATA["pct_in_zip"])
 
 
 @pytest.mark.skip(reason=SKIP_REASON)
