@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.integrations.rentcast import RentCastError
 from app.routers import auth, deals, properties, risk
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 # Initialize Sentry only when DSN looks valid.
 if settings.sentry_dsn_backend and "://" in settings.sentry_dsn_backend:
@@ -29,6 +31,19 @@ app = FastAPI(
     docs_url="/docs" if settings.is_development else None,
     redoc_url="/redoc" if settings.is_development else None,
 )
+
+
+@app.exception_handler(RentCastError)
+async def handle_rentcast_error(request: Request, exc: RentCastError) -> JSONResponse:
+    """Return standardized API error shape for RentCast integration failures."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "error_code": exc.error_code,
+        },
+    )
+
 
 # Configure CORS
 app.add_middleware(

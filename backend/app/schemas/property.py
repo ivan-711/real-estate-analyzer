@@ -64,3 +64,32 @@ class PropertyResponse(BaseModel):
     mashvisor_id: Optional[str]
     created_at: datetime
     updated_at: datetime
+
+
+class PropertyLookupRequest(BaseModel):
+    """Request payload for RentCast property lookup."""
+
+    address: str = Field(..., min_length=5, max_length=255)
+
+
+class PropertyLookupResponse(BaseModel):
+    """Normalized property lookup payload used to pre-fill deal/property forms."""
+
+    address: str
+    city: Optional[str]
+    state: Optional[str]
+    zip_code: Optional[str]
+    county: Optional[str]
+    property_type: Optional[str]
+    num_units: Optional[int]
+    bedrooms: Optional[int]
+    bathrooms: Optional[float]
+    square_footage: Optional[int]
+    lot_size: Optional[int]
+    year_built: Optional[int]
+    rentcast_id: Optional[str]
+    rent_estimate_monthly: Optional[float]
+    rent_estimate_low: Optional[float]
+    rent_estimate_high: Optional[float]
+    rent_estimate_confidence: Optional[float]
+    estimated_value: Optional[float] = None

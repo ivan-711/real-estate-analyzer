@@ -3,10 +3,17 @@ from __future__ import annotations
 import uuid
 
 from app.database import get_db
+from app.integrations.rentcast import SAMPLE_LOOKUP_RESPONSE, RentCastClient
 from app.middleware.auth import get_current_user
 from app.models.property import Property
 from app.models.user import User
-from app.schemas.property import PropertyCreate, PropertyResponse, PropertyUpdate
+from app.schemas.property import (
+    PropertyCreate,
+    PropertyLookupRequest,
+    PropertyLookupResponse,
+    PropertyResponse,
+    PropertyUpdate,
+)
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,6 +65,29 @@ async def list_properties(
     )
     properties = result.scalars().all()
     return [PropertyResponse.model_validate(p) for p in properties]
+
+
+@router.post("/lookup", response_model=PropertyLookupResponse)
+async def lookup_property_data(
+    data: PropertyLookupRequest,
+    current_user: User = Depends(get_current_user),
+) -> PropertyLookupResponse:
+    """Lookup property/rent data from RentCast and return normalized form-prefill fields."""
+    async with RentCastClient() as client:
+        property_data = await client.lookup_property(data.address)
+        rent_data = await client.get_rent_estimate(data.address)
+
+    merged = {**property_data, **rent_data}
+    if not merged.get("address"):
+        merged["address"] = data.address
+
+    return PropertyLookupResponse.model_validate(merged)
+
+
+@router.get("/sample-data", response_model=PropertyLookupResponse)
+async def get_sample_property_data() -> PropertyLookupResponse:
+    """Return hardcoded sample lookup payload for demo mode without API calls."""
+    return PropertyLookupResponse.model_validate(SAMPLE_LOOKUP_RESPONSE)
 
 
 @router.get("/{property_id}", response_model=PropertyResponse)
@@ -135,14 +165,3 @@ async def delete_property(
         )
     await db.delete(property_)
     await db.commit()
-
-
-@router.post("/lookup")
-async def property_lookup_placeholder(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> dict[str, str]:
-    """Placeholder for RentCast property lookup by address. Not implemented yet."""
-    return {
-        "message": "Property lookup will be implemented with RentCast integration.",
-    }

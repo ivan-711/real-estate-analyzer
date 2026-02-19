@@ -12,6 +12,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
+from typing import Dict
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -51,3 +52,28 @@ async def client(ensure_db_schema: None) -> AsyncClient:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest.fixture
+def sample_rentcast_property_response() -> Dict[str, object]:
+    """Hardcoded sample payload matching the normalized lookup response shape."""
+    return {
+        "address": "1515 N 7th St",
+        "city": "Sheboygan",
+        "state": "WI",
+        "zip_code": "53081",
+        "county": "Sheboygan",
+        "property_type": "duplex",
+        "num_units": 2,
+        "bedrooms": 5,
+        "bathrooms": 2.0,
+        "square_footage": 2330,
+        "lot_size": 4356,
+        "year_built": 1900,
+        "rentcast_id": "sample-rentcast-id-1515-n-7th",
+        "estimated_value": 220000,
+        "rent_estimate_monthly": 1800,
+        "rent_estimate_low": 1650,
+        "rent_estimate_high": 1950,
+        "rent_estimate_confidence": 0.84,
+    }

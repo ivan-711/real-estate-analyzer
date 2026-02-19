@@ -5,6 +5,7 @@ Tests for Property CRUD API endpoints.
 from __future__ import annotations
 
 import uuid
+from typing import Dict
 
 from httpx import AsyncClient
 
@@ -128,13 +129,58 @@ async def test_delete_property_success(client: AsyncClient) -> None:
     assert get_resp.status_code == 404
 
 
-async def test_property_lookup_placeholder(client: AsyncClient) -> None:
-    """POST /api/v1/properties/lookup returns 200 with placeholder message."""
+async def test_property_lookup_success(
+    client: AsyncClient,
+    monkeypatch,
+    sample_rentcast_property_response: Dict[str, object],
+) -> None:
+    """POST /api/v1/properties/lookup returns normalized property + rent estimate."""
+    from app.integrations.rentcast import RentCastClient
+
+    async def fake_lookup_property(self, address: str) -> dict:
+        payload = dict(sample_rentcast_property_response)
+        payload["address"] = address.split(",")[0].strip()
+        return payload
+
+    async def fake_get_rent_estimate(self, address: str) -> dict:
+        return {
+            "rent_estimate_monthly": 1800,
+            "rent_estimate_low": 1650,
+            "rent_estimate_high": 1950,
+            "rent_estimate_confidence": 0.84,
+        }
+
+    monkeypatch.setattr(RentCastClient, "lookup_property", fake_lookup_property)
+    monkeypatch.setattr(RentCastClient, "get_rent_estimate", fake_get_rent_estimate)
+
     headers = await _auth_headers(client)
-    response = await client.post("/api/v1/properties/lookup", headers=headers)
+    response = await client.post(
+        "/api/v1/properties/lookup",
+        json={"address": "1515 N 7th St, Sheboygan, WI 53081"},
+        headers=headers,
+    )
     assert response.status_code == 200
     data = response.json()
-    assert "message" in data
+    assert data["address"] == "1515 N 7th St"
+    assert data["city"] == "Sheboygan"
+    assert data["state"] == "WI"
+    assert data["zip_code"] == "53081"
+    assert data["property_type"] == "duplex"
+    assert data["bedrooms"] == 5
+    assert data["bathrooms"] == 2.0
+    assert data["square_footage"] == 2330
+    assert data["year_built"] == 1900
+    assert data["rent_estimate_monthly"] == 1800
+
+
+async def test_property_sample_data_endpoint(
+    client: AsyncClient,
+    sample_rentcast_property_response: Dict[str, object],
+) -> None:
+    """GET /api/v1/properties/sample-data returns hardcoded sample lookup payload."""
+    response = await client.get("/api/v1/properties/sample-data")
+    assert response.status_code == 200
+    assert response.json() == sample_rentcast_property_response
 
 
 # --- Auth ---
