@@ -9,11 +9,34 @@ from app.models.deal import Deal
 from app.models.property import Property
 from app.models.user import User
 from app.schemas.deal import DealCreate, DealResponse, DealUpdate
+from app.services.deal_calculator import DealCalculator
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/deals", tags=["deals"])
+
+CALCULATED_METRIC_FIELDS = (
+    "noi",
+    "cap_rate",
+    "cash_on_cash",
+    "monthly_cash_flow",
+    "annual_cash_flow",
+    "total_cash_invested",
+    "dscr",
+    "grm",
+    "irr_5yr",
+    "irr_10yr",
+    "equity_buildup_5yr",
+    "equity_buildup_10yr",
+)
+
+
+def _apply_calculated_metrics(deal: Deal, metrics: dict) -> None:
+    """Apply available calculated metrics to the deal model instance."""
+    for field in CALCULATED_METRIC_FIELDS:
+        if field in metrics:
+            setattr(deal, field, metrics[field])
 
 
 @router.post("/", response_model=DealResponse, status_code=status.HTTP_201_CREATED)
@@ -58,6 +81,12 @@ async def create_deal(
         hoa_monthly=data.hoa_monthly,
         utilities_monthly=data.utilities_monthly,
     )
+    try:
+        calculated_metrics = DealCalculator.calculate_all(data.model_dump())
+    except NotImplementedError:
+        calculated_metrics = None
+    if calculated_metrics:
+        _apply_calculated_metrics(deal, calculated_metrics)
     db.add(deal)
     await db.commit()
     await db.refresh(deal)
@@ -130,6 +159,35 @@ async def update_deal(
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(deal, key, value)
+    try:
+        calculated_metrics = DealCalculator.calculate_all(
+            {
+                "property_id": deal.property_id,
+                "deal_name": deal.deal_name,
+                "purchase_price": deal.purchase_price,
+                "closing_costs": deal.closing_costs,
+                "rehab_costs": deal.rehab_costs,
+                "after_repair_value": deal.after_repair_value,
+                "down_payment_pct": deal.down_payment_pct,
+                "loan_amount": deal.loan_amount,
+                "interest_rate": deal.interest_rate,
+                "loan_term_years": deal.loan_term_years,
+                "monthly_mortgage": deal.monthly_mortgage,
+                "gross_monthly_rent": deal.gross_monthly_rent,
+                "other_monthly_income": deal.other_monthly_income,
+                "property_tax_monthly": deal.property_tax_monthly,
+                "insurance_monthly": deal.insurance_monthly,
+                "vacancy_rate_pct": deal.vacancy_rate_pct,
+                "maintenance_rate_pct": deal.maintenance_rate_pct,
+                "management_fee_pct": deal.management_fee_pct,
+                "hoa_monthly": deal.hoa_monthly,
+                "utilities_monthly": deal.utilities_monthly,
+            }
+        )
+    except NotImplementedError:
+        calculated_metrics = None
+    if calculated_metrics:
+        _apply_calculated_metrics(deal, calculated_metrics)
     await db.commit()
     await db.refresh(deal)
     return DealResponse.model_validate(deal)
