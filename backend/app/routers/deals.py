@@ -10,11 +10,35 @@ from app.models.property import Property
 from app.models.user import User
 from app.schemas.deal import DealCreate, DealResponse, DealUpdate
 from app.services.deal_calculator import DealCalculator
+from app.services.risk_engine import RiskEngine
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/deals", tags=["deals"])
+
+DEAL_INPUT_FIELDS = (
+    "property_id",
+    "deal_name",
+    "purchase_price",
+    "closing_costs",
+    "rehab_costs",
+    "after_repair_value",
+    "down_payment_pct",
+    "loan_amount",
+    "interest_rate",
+    "loan_term_years",
+    "monthly_mortgage",
+    "gross_monthly_rent",
+    "other_monthly_income",
+    "property_tax_monthly",
+    "insurance_monthly",
+    "vacancy_rate_pct",
+    "maintenance_rate_pct",
+    "management_fee_pct",
+    "hoa_monthly",
+    "utilities_monthly",
+)
 
 CALCULATED_METRIC_FIELDS = (
     "noi",
@@ -37,6 +61,19 @@ def _apply_calculated_metrics(deal: Deal, metrics: dict) -> None:
     for field in CALCULATED_METRIC_FIELDS:
         if field in metrics:
             setattr(deal, field, metrics[field])
+
+
+def _build_deal_inputs_payload(deal: Deal) -> dict:
+    """Build calculator/risk input payload from deal model fields."""
+    return {field: getattr(deal, field) for field in DEAL_INPUT_FIELDS}
+
+
+def _apply_risk_result(deal: Deal, risk_result: dict) -> None:
+    """Apply available risk engine outputs to the deal model instance."""
+    if "score" in risk_result:
+        deal.risk_score = risk_result["score"]
+    if "factors" in risk_result:
+        deal.risk_factors = risk_result["factors"]
 
 
 @router.post("/", response_model=DealResponse, status_code=status.HTTP_201_CREATED)
@@ -81,12 +118,26 @@ async def create_deal(
         hoa_monthly=data.hoa_monthly,
         utilities_monthly=data.utilities_monthly,
     )
+    deal_inputs = _build_deal_inputs_payload(deal)
     try:
-        calculated_metrics = DealCalculator.calculate_all(data.model_dump())
+        calculated_metrics = DealCalculator.calculate_all(deal_inputs)
     except NotImplementedError:
         calculated_metrics = None
     if calculated_metrics:
         _apply_calculated_metrics(deal, calculated_metrics)
+    risk_inputs = dict(deal_inputs)
+    if calculated_metrics:
+        risk_inputs.update(calculated_metrics)
+    try:
+        risk_result = RiskEngine.calculate_risk_score(
+            deal_metrics=risk_inputs,
+            market_data=None,
+            portfolio_data=None,
+        )
+    except NotImplementedError:
+        risk_result = None
+    if risk_result:
+        _apply_risk_result(deal, risk_result)
     db.add(deal)
     await db.commit()
     await db.refresh(deal)
@@ -159,35 +210,26 @@ async def update_deal(
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(deal, key, value)
+    deal_inputs = _build_deal_inputs_payload(deal)
     try:
-        calculated_metrics = DealCalculator.calculate_all(
-            {
-                "property_id": deal.property_id,
-                "deal_name": deal.deal_name,
-                "purchase_price": deal.purchase_price,
-                "closing_costs": deal.closing_costs,
-                "rehab_costs": deal.rehab_costs,
-                "after_repair_value": deal.after_repair_value,
-                "down_payment_pct": deal.down_payment_pct,
-                "loan_amount": deal.loan_amount,
-                "interest_rate": deal.interest_rate,
-                "loan_term_years": deal.loan_term_years,
-                "monthly_mortgage": deal.monthly_mortgage,
-                "gross_monthly_rent": deal.gross_monthly_rent,
-                "other_monthly_income": deal.other_monthly_income,
-                "property_tax_monthly": deal.property_tax_monthly,
-                "insurance_monthly": deal.insurance_monthly,
-                "vacancy_rate_pct": deal.vacancy_rate_pct,
-                "maintenance_rate_pct": deal.maintenance_rate_pct,
-                "management_fee_pct": deal.management_fee_pct,
-                "hoa_monthly": deal.hoa_monthly,
-                "utilities_monthly": deal.utilities_monthly,
-            }
-        )
+        calculated_metrics = DealCalculator.calculate_all(deal_inputs)
     except NotImplementedError:
         calculated_metrics = None
     if calculated_metrics:
         _apply_calculated_metrics(deal, calculated_metrics)
+    risk_inputs = dict(deal_inputs)
+    if calculated_metrics:
+        risk_inputs.update(calculated_metrics)
+    try:
+        risk_result = RiskEngine.calculate_risk_score(
+            deal_metrics=risk_inputs,
+            market_data=None,
+            portfolio_data=None,
+        )
+    except NotImplementedError:
+        risk_result = None
+    if risk_result:
+        _apply_risk_result(deal, risk_result)
     await db.commit()
     await db.refresh(deal)
     return DealResponse.model_validate(deal)

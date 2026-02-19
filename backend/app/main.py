@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
-from app.routers import auth, deals, properties
+from app.routers import auth, deals, properties, risk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -42,6 +42,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(properties.router)
 app.include_router(deals.router)
+app.include_router(risk.router)
 
 
 @app.get("/")
