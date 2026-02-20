@@ -21,6 +21,13 @@ class Settings(BaseSettings):
         ...,
         description="PostgreSQL database URL (format: postgresql+asyncpg://user:pass@host:port/dbname)",
     )
+    test_database_url: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional dedicated PostgreSQL URL for pytest "
+            "(format: postgresql+asyncpg://user:pass@host:port/test_db)"
+        ),
+    )
 
     # External APIs
     rentcast_api_key: Optional[str] = Field(

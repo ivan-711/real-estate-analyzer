@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from typing import Any, Dict
 
 import httpx
@@ -15,29 +14,6 @@ from app.integrations.rentcast import (
     RentCastServerError,
 )
 from httpx import AsyncClient
-
-
-def _unique_email() -> str:
-    return f"test-{uuid.uuid4().hex[:12]}@example.com"
-
-
-async def _auth_headers(client: AsyncClient) -> dict[str, str]:
-    """Register a user and return Authorization headers."""
-    email = _unique_email()
-    await client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": email,
-            "password": "password123",
-            "full_name": "RentCast Test User",
-        },
-    )
-    login = await client.post(
-        "/api/v1/auth/login",
-        json={"email": email, "password": "password123"},
-    )
-    token = login.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
 
 
 async def test_rentcast_success_lookup_and_rent_estimate(
@@ -312,6 +288,7 @@ async def test_rentcast_missing_api_key_raises_clear_error(monkeypatch) -> None:
 )
 async def test_lookup_endpoint_uses_standard_error_shape(
     client: AsyncClient,
+    auth_headers: dict[str, str],
     monkeypatch,
     raised_exception: Exception,
     status_code: int,
@@ -325,11 +302,10 @@ async def test_lookup_endpoint_uses_standard_error_shape(
 
     monkeypatch.setattr(RentCastClient, "lookup_property", fake_lookup)
 
-    headers = await _auth_headers(client)
     response = await client.post(
         "/api/v1/properties/lookup",
         json={"address": "1515 N 7th St, Sheboygan, WI 53081"},
-        headers=headers,
+        headers=auth_headers,
     )
 
     assert response.status_code == status_code
