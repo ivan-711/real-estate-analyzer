@@ -5,6 +5,7 @@ Tests for Deal CRUD API endpoints.
 from __future__ import annotations
 
 import uuid
+from unittest.mock import patch
 
 from httpx import AsyncClient
 
@@ -199,6 +200,32 @@ async def test_create_deal_property_not_found(
         headers=auth_headers,
     )
     assert response.status_code == 404
+
+
+async def test_create_deal_calculator_value_error_returns_400(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_property,
+) -> None:
+    """When DealCalculator.calculate_all raises ValueError, API returns 400 with error_code."""
+    with patch(
+        "app.routers.deals.DealCalculator.calculate_all",
+        side_effect=ValueError("purchase_price must be positive"),
+    ):
+        response = await client.post(
+            "/api/v1/deals/",
+            json=_deal_payload_for_property(str(test_property.id)),
+            headers=auth_headers,
+        )
+    assert response.status_code == 400
+    data = response.json()
+    assert "detail" in data
+    # FastAPI nests our dict under "detail", so detail may be {"detail": "...", "error_code": "..."}
+    if isinstance(data["detail"], dict):
+        assert data["detail"].get("error_code") == "INVALID_DEAL_INPUTS"
+        assert "positive" in str(data["detail"].get("detail", ""))
+    else:
+        assert "positive" in str(data["detail"])
 
 
 async def test_user_b_cannot_see_user_a_deal(

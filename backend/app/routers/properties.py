@@ -3,7 +3,11 @@ from __future__ import annotations
 import uuid
 
 from app.database import get_db
-from app.integrations.rentcast import SAMPLE_LOOKUP_RESPONSE, RentCastClient
+from app.integrations.rentcast import (
+    SAMPLE_LOOKUP_RESPONSE,
+    PropertyNotFound,
+    RentCastClient,
+)
 from app.middleware.auth import get_current_user
 from app.models.property import Property
 from app.models.user import User
@@ -15,6 +19,7 @@ from app.schemas.property import (
     PropertyUpdate,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,9 +78,18 @@ async def lookup_property_data(
     current_user: User = Depends(get_current_user),
 ) -> PropertyLookupResponse:
     """Lookup property/rent data from RentCast and return normalized form-prefill fields."""
-    async with RentCastClient() as client:
-        property_data = await client.lookup_property(data.address)
-        rent_data = await client.get_rent_estimate(data.address)
+    try:
+        async with RentCastClient() as client:
+            property_data = await client.lookup_property(data.address)
+            rent_data = await client.get_rent_estimate(data.address)
+    except PropertyNotFound:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": "We couldn't find that property. Check the address and try again.",
+                "error_code": "PROPERTY_NOT_FOUND",
+            },
+        )
 
     merged = {**property_data, **rent_data}
     if not merged.get("address"):

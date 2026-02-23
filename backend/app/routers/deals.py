@@ -130,13 +130,24 @@ async def create_deal(
         hoa_monthly=data.hoa_monthly,
         utilities_monthly=data.utilities_monthly,
     )
+    db.add(deal)
+    await db.commit()
+    await db.refresh(deal)
+
     deal_inputs = _build_deal_inputs_payload(deal)
     try:
         calculated_metrics = DealCalculator.calculate_all(deal_inputs)
-    except NotImplementedError:
-        calculated_metrics = None
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "detail": str(e),
+                "error_code": "INVALID_DEAL_INPUTS",
+            },
+        ) from e
     if calculated_metrics:
         _apply_calculated_metrics(deal, calculated_metrics)
+
     risk_inputs = dict(deal_inputs)
     if calculated_metrics:
         risk_inputs.update(calculated_metrics)
@@ -146,11 +157,12 @@ async def create_deal(
             market_data=None,
             portfolio_data=None,
         )
-    except NotImplementedError:
-        risk_result = None
-    if risk_result:
-        _apply_risk_result(deal, risk_result)
-    db.add(deal)
+        if risk_result:
+            _apply_risk_result(deal, risk_result)
+    except Exception:
+        deal.risk_score = None
+        deal.risk_factors = None
+
     await db.commit()
     await db.refresh(deal)
     return DealResponse.model_validate(deal)
@@ -225,8 +237,14 @@ async def update_deal(
     deal_inputs = _build_deal_inputs_payload(deal)
     try:
         calculated_metrics = DealCalculator.calculate_all(deal_inputs)
-    except NotImplementedError:
-        calculated_metrics = None
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "detail": str(e),
+                "error_code": "INVALID_DEAL_INPUTS",
+            },
+        ) from e
     if calculated_metrics:
         _apply_calculated_metrics(deal, calculated_metrics)
     risk_inputs = dict(deal_inputs)
@@ -238,10 +256,11 @@ async def update_deal(
             market_data=None,
             portfolio_data=None,
         )
-    except NotImplementedError:
-        risk_result = None
-    if risk_result:
-        _apply_risk_result(deal, risk_result)
+        if risk_result:
+            _apply_risk_result(deal, risk_result)
+    except Exception:
+        deal.risk_score = None
+        deal.risk_factors = None
     await db.commit()
     await db.refresh(deal)
     return DealResponse.model_validate(deal)

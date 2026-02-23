@@ -1,3 +1,4 @@
+# Railway-friendly backend image: build with context = backend/
 FROM python:3.11-slim
 
 WORKDIR /app

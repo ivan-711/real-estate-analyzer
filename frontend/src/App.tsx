@@ -1,23 +1,22 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import NavBar from "./components/NavBar";
+import Landing from "./pages/Landing";
+import Analyze from "./pages/Analyze";
+import DealResults from "./pages/DealResults";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-section-bg">
+        <NavBar />
         <Routes>
-          <Route
-            path="/"
-            element={
-              <div className="container mx-auto px-4 py-8">
-                <h1 className="text-3xl font-bold text-gray-900">
-                  MidwestDealAnalyzer
-                </h1>
-                <p className="mt-4 text-gray-600">
-                  Real estate investment analysis platform for Midwest markets
-                </p>
-              </div>
-            }
-          />
+          <Route path="/" element={<Landing />} />
+          <Route path="/analyze" element={<Analyze />} />
+          <Route path="/deals/:id" element={<DealResults />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
         </Routes>
       </div>
     </Router>
