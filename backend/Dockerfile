@@ -20,4 +20,4 @@ COPY . .
 EXPOSE 8000
 
 # Run alembic migrations then start the application (Railway uses PORT env)
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
