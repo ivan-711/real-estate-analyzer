@@ -6,9 +6,14 @@ from app.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
+# Use aiosqlite for SQLite async support (Railway fallback)
+_database_url = settings.database_url
+if _database_url.startswith("sqlite://"):
+    _database_url = _database_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+
 # SQLAlchemy 2.0 async engine
 engine = create_async_engine(
-    settings.database_url,
+    _database_url,
     echo=settings.is_development,
     future=True,
 )
