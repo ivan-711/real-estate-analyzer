@@ -43,6 +43,59 @@ export interface PropertyLookupResponse {
   estimated_value?: number;
 }
 
+export interface DealPreviewPayload {
+  purchase_price: string | number;
+  gross_monthly_rent: string | number;
+  deal_name?: string;
+  closing_costs?: string | number;
+  rehab_costs?: string | number;
+  after_repair_value?: string | number;
+  down_payment_pct?: string | number;
+  loan_amount?: string | number;
+  interest_rate?: string | number;
+  loan_term_years?: number;
+  monthly_mortgage?: string | number;
+  other_monthly_income?: string | number;
+  property_tax_monthly?: string | number;
+  insurance_monthly?: string | number;
+  vacancy_rate_pct?: string | number;
+  maintenance_rate_pct?: string | number;
+  management_fee_pct?: string | number;
+  hoa_monthly?: string | number;
+  utilities_monthly?: string | number;
+}
+
+export interface DealPreviewResponse {
+  purchase_price: number;
+  gross_monthly_rent: number;
+  down_payment_pct?: number;
+  interest_rate?: number;
+  loan_term_years?: number;
+  closing_costs?: number;
+  rehab_costs?: number;
+  property_tax_monthly?: number;
+  insurance_monthly?: number;
+  vacancy_rate_pct?: number;
+  maintenance_rate_pct?: number;
+  management_fee_pct?: number;
+  noi?: number;
+  cap_rate?: number;
+  cash_on_cash?: number;
+  monthly_cash_flow?: number;
+  annual_cash_flow?: number;
+  total_cash_invested?: number;
+  dscr?: number;
+  grm?: number;
+  irr_5yr?: number;
+  irr_10yr?: number;
+  equity_buildup_5yr?: number;
+  equity_buildup_10yr?: number;
+  risk_score?: number;
+  risk_factors?: Record<string, unknown>;
+  loan_amount?: number;
+  monthly_mortgage?: number;
+}
+
 export interface DealCreatePayload {
   property_id: string;
   deal_name?: string;

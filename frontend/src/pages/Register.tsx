@@ -24,13 +24,20 @@ export default function Register() {
       setToken(res.data.access_token);
       navigate("/", { replace: true });
     } catch (err: unknown) {
-      const data = err && typeof err === "object" && "response" in err
-        ? (err as { response?: { data?: { detail?: string | { detail?: string } } } }).response?.data?.detail
-        : null;
+      const data =
+        err && typeof err === "object" && "response" in err
+          ? (
+              err as {
+                response?: { data?: { detail?: string | { detail?: string } } };
+              }
+            ).response?.data?.detail
+          : null;
       setError(
-        typeof data === "string" ? data : data && typeof data === "object" && "detail" in data
-          ? String((data as { detail: string }).detail)
-          : "Registration failed. Please try again."
+        typeof data === "string"
+          ? data
+          : data && typeof data === "object" && "detail" in data
+            ? String((data as { detail: string }).detail)
+            : "Registration failed. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -41,10 +48,15 @@ export default function Register() {
     <div className="mx-auto max-w-md px-4 py-16">
       <div className="rounded-xl border border-border bg-white p-8 shadow-sm">
         <h1 className="font-sans text-2xl font-bold text-navy">Register</h1>
-        <p className="mt-1 text-sm text-slate">Create an account to analyze and save deals.</p>
+        <p className="mt-1 text-sm text-slate">
+          Create an account to analyze and save deals.
+        </p>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate">
+            <label
+              htmlFor="email"
+              className="mb-1 block text-sm font-medium text-slate"
+            >
               Email
             </label>
             <input
@@ -57,7 +69,10 @@ export default function Register() {
             />
           </div>
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate">
+            <label
+              htmlFor="password"
+              className="mb-1 block text-sm font-medium text-slate"
+            >
               Password (min 8 characters)
             </label>
             <input
@@ -71,7 +86,10 @@ export default function Register() {
             />
           </div>
           <div>
-            <label htmlFor="fullName" className="mb-1 block text-sm font-medium text-slate">
+            <label
+              htmlFor="fullName"
+              className="mb-1 block text-sm font-medium text-slate"
+            >
               Full name (optional)
             </label>
             <input
@@ -82,9 +100,7 @@ export default function Register() {
               className="w-full rounded-lg border border-border px-4 py-2.5 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary"
             />
           </div>
-          {error && (
-            <p className="text-sm text-red-negative">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-negative">{error}</p>}
           <button
             type="submit"
             disabled={loading}

@@ -10,6 +10,26 @@ from unittest.mock import patch
 from httpx import AsyncClient
 
 
+def _preview_payload() -> dict:
+    """Payload for guest preview (no property_id, no auth)."""
+    return {
+        "purchase_price": "220000",
+        "gross_monthly_rent": "1700",
+        "down_payment_pct": "20",
+        "interest_rate": "7",
+        "loan_term_years": 30,
+        "vacancy_rate_pct": "5",
+        "property_tax_monthly": "300",
+        "insurance_monthly": "120",
+        "maintenance_rate_pct": "5",
+        "management_fee_pct": "10",
+        "closing_costs": "0",
+        "rehab_costs": "0",
+        "hoa_monthly": "0",
+        "utilities_monthly": "0",
+    }
+
+
 def _deal_payload_for_property(property_id: str) -> dict:
     return {
         "property_id": property_id,
@@ -32,6 +52,32 @@ def _deal_payload_for_property(property_id: str) -> dict:
         "hoa_monthly": "0",
         "utilities_monthly": "0",
     }
+
+
+async def test_preview_deal_success_no_auth(client: AsyncClient) -> None:
+    """POST /api/v1/deals/preview returns metrics without auth, no save to DB."""
+    response = await client.post("/api/v1/deals/preview", json=_preview_payload())
+    assert response.status_code == 200
+    data = response.json()
+    assert "noi" in data
+    assert "cap_rate" in data
+    assert "monthly_cash_flow" in data
+    assert "risk_score" in data
+    assert "risk_factors" in data
+    assert "id" not in data
+    assert "created_at" not in data
+
+
+async def test_preview_deal_value_error_returns_400(client: AsyncClient) -> None:
+    """When DealCalculator raises ValueError, preview returns 400."""
+    with patch(
+        "app.routers.deals.DealCalculator.calculate_all",
+        side_effect=ValueError("purchase_price must be positive"),
+    ):
+        response = await client.post("/api/v1/deals/preview", json=_preview_payload())
+    assert response.status_code == 400
+    data = response.json()
+    assert "detail" in data
 
 
 async def test_create_deal_success(

@@ -9,7 +9,13 @@ from app.middleware.auth import get_current_user
 from app.models.deal import Deal
 from app.models.property import Property
 from app.models.user import User
-from app.schemas.deal import DealCreate, DealResponse, DealUpdate
+from app.schemas.deal import (
+    DealCreate,
+    DealPreviewRequest,
+    DealPreviewResponse,
+    DealResponse,
+    DealUpdate,
+)
 from app.services.deal_calculator import DealCalculator
 from app.services.risk_engine import RiskEngine
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -86,6 +92,98 @@ def _apply_risk_result(deal: Deal, risk_result: dict) -> None:
         deal.risk_score = risk_result["score"]
     if "factors" in risk_result:
         deal.risk_factors = _json_safe(risk_result["factors"])
+
+
+def _build_inputs_from_data(data: DealCreate | DealPreviewRequest) -> dict:
+    """Build calculator/risk input payload from create or preview request."""
+    return {
+        "property_id": getattr(data, "property_id", None),
+        "deal_name": data.deal_name,
+        "purchase_price": data.purchase_price,
+        "closing_costs": data.closing_costs,
+        "rehab_costs": data.rehab_costs,
+        "after_repair_value": data.after_repair_value,
+        "down_payment_pct": data.down_payment_pct,
+        "loan_amount": data.loan_amount,
+        "interest_rate": data.interest_rate,
+        "loan_term_years": data.loan_term_years,
+        "monthly_mortgage": data.monthly_mortgage,
+        "gross_monthly_rent": data.gross_monthly_rent,
+        "other_monthly_income": data.other_monthly_income,
+        "property_tax_monthly": data.property_tax_monthly,
+        "insurance_monthly": data.insurance_monthly,
+        "vacancy_rate_pct": data.vacancy_rate_pct,
+        "maintenance_rate_pct": data.maintenance_rate_pct,
+        "management_fee_pct": data.management_fee_pct,
+        "hoa_monthly": data.hoa_monthly,
+        "utilities_monthly": data.utilities_monthly,
+    }
+
+
+@router.post("/preview", response_model=DealPreviewResponse)
+async def preview_deal(data: DealPreviewRequest) -> DealPreviewResponse:
+    """Preview deal metrics without saving. No auth required. For guest analysis."""
+    deal_inputs = _build_inputs_from_data(data)
+    try:
+        calculated_metrics = DealCalculator.calculate_all(deal_inputs)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "detail": str(e),
+                "error_code": "INVALID_DEAL_INPUTS",
+            },
+        ) from e
+
+    risk_inputs = dict(deal_inputs)
+    if calculated_metrics:
+        risk_inputs.update(calculated_metrics)
+    risk_score: Optional[Decimal] = None
+    risk_factors: Optional[dict] = None
+    try:
+        risk_result = RiskEngine.calculate_risk_score(
+            deal_metrics=risk_inputs,
+            market_data=None,
+            portfolio_data=None,
+        )
+        if risk_result:
+            risk_score = risk_result.get("score")
+            risk_factors = _json_safe(risk_result.get("factors", {}))
+    except Exception:
+        pass
+
+    metrics = calculated_metrics or {}
+    return DealPreviewResponse(
+        purchase_price=data.purchase_price,
+        gross_monthly_rent=data.gross_monthly_rent,
+        down_payment_pct=data.down_payment_pct,
+        interest_rate=data.interest_rate,
+        loan_term_years=data.loan_term_years,
+        closing_costs=data.closing_costs,
+        rehab_costs=data.rehab_costs,
+        property_tax_monthly=data.property_tax_monthly,
+        insurance_monthly=data.insurance_monthly,
+        vacancy_rate_pct=data.vacancy_rate_pct,
+        maintenance_rate_pct=data.maintenance_rate_pct,
+        management_fee_pct=data.management_fee_pct,
+        noi=metrics.get("noi"),
+        cap_rate=metrics.get("cap_rate"),
+        cash_on_cash=metrics.get("cash_on_cash"),
+        monthly_cash_flow=metrics.get("monthly_cash_flow"),
+        annual_cash_flow=metrics.get("annual_cash_flow"),
+        total_cash_invested=metrics.get("total_cash_invested"),
+        dscr=metrics.get("dscr"),
+        grm=metrics.get("grm"),
+        irr_5yr=metrics.get("irr_5yr"),
+        irr_10yr=metrics.get("irr_10yr"),
+        equity_buildup_5yr=metrics.get("equity_buildup_5yr"),
+        equity_buildup_10yr=metrics.get("equity_buildup_10yr"),
+        risk_score=risk_score,
+        risk_factors=risk_factors,
+        loan_amount=metrics.get("loan_amount") or risk_inputs.get("loan_amount"),
+        monthly_mortgage=metrics.get("monthly_mortgage")
+        or risk_inputs.get("monthly_mortgage"),
+    )
 
 
 @router.post("/", response_model=DealResponse, status_code=status.HTTP_201_CREATED)
