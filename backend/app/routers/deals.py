@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Optional
+from decimal import Decimal
+from typing import Any, Optional
 
 from app.database import get_db
 from app.middleware.auth import get_current_user
@@ -68,12 +69,23 @@ def _build_deal_inputs_payload(deal: Deal) -> dict:
     return {field: getattr(deal, field) for field in DEAL_INPUT_FIELDS}
 
 
+def _json_safe(obj: Any) -> Any:
+    """Convert Decimals and nested dicts to JSON-serializable form for JSONB."""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_safe(v) for v in obj]
+    return obj
+
+
 def _apply_risk_result(deal: Deal, risk_result: dict) -> None:
     """Apply available risk engine outputs to the deal model instance."""
     if "score" in risk_result:
         deal.risk_score = risk_result["score"]
     if "factors" in risk_result:
-        deal.risk_factors = risk_result["factors"]
+        deal.risk_factors = _json_safe(risk_result["factors"])
 
 
 @router.post("/", response_model=DealResponse, status_code=status.HTTP_201_CREATED)

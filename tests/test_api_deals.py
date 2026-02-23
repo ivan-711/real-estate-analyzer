@@ -51,8 +51,8 @@ async def test_create_deal_success(
     assert data["status"] == "draft"
     assert "id" in data
     assert "created_at" in data
-    assert data.get("noi") is None
-    assert data.get("cap_rate") is None
+    assert data.get("noi") is not None
+    assert data.get("cap_rate") is not None
 
 
 async def test_list_deals_success(
