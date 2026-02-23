@@ -1,0 +1,9 @@
+# Railway config for the backend service (Option A: repo root as build context).
+# Ensure Root Directory is empty (or "/") in the Railway dashboard so the
+# build context is the whole repo; this file only sets the Dockerfile path.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile"
+# Only trigger deploys when backend or this config changes
+watchPatterns = ["backend/**", "railway.toml"]

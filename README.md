@@ -78,6 +78,10 @@ This project is fully documented across three key documents:
 
 **Open Questions:** See [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) for tracking decisions that need to be made during development.
 
+## Deployment (Railway)
+
+The FastAPI backend is deployed to Railway. The backend Dockerfile expects the **repository root** as the Docker build context. See **[docs/railway-setup.md](docs/railway-setup.md)** for exact Railway dashboard settings (Root Directory = repo root, Dockerfile path = `backend/Dockerfile`) and optional config-as-code (`railway.toml`). After changing those settings, trigger a new deploy so the build succeeds.
+
 ## Architecture Decision Records
 
 **PostgreSQL over MongoDB:** Real estate data is inherently relational. A property has many deals, a user has many properties, deals have financial projections tied to market data snapshots. PostgreSQL handles this naturally and is the industry standard for financial data.
