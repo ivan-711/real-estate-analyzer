@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Ensure app package is importable when running alembic/uvicorn (e.g. Railway)
+ENV PYTHONPATH=/app
+
 # Expose port
 EXPOSE 8000
 
