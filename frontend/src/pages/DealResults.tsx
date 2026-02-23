@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import type { AxiosResponse } from "axios";
 import api, { getToken } from "../lib/api";
 import type { DealResponse } from "../types";
 
@@ -51,7 +52,7 @@ export default function DealResults() {
     }
     api
       .get<DealResponse>(`/api/v1/deals/${id}`)
-      .then((res) => setDeal(res.data))
+      .then((res: AxiosResponse<DealResponse>) => setDeal(res.data))
       .catch(() => setError("Deal not found or you don’t have access."))
       .finally(() => setLoading(false));
   }, [id]);
