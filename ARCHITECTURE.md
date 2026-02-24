@@ -767,10 +767,13 @@ real-estate-analyzer/
 
 ### Infrastructure
 
+Production (e.g. Railway) uses **PostgreSQL** for the database. SQLite is for local development only and is not used or supported for production or Railway deployments.
+
 | Service | Provider | Cost | Purpose |
 |---------|----------|------|---------|
 | Frontend | Vercel | Free tier | React app, instant deploys from GitHub |
-| Backend | Railway | ~$5-10/month | FastAPI + managed PostgreSQL |
+| Backend | Railway | ~$5-10/month | FastAPI; must use PostgreSQL (add Postgres service, set DATABASE_URL) |
+| PostgreSQL | Railway (same project) | Included | Production database; required for backend on Railway |
 | Redis | Railway add-on | Included | Caching layer |
 | Error Tracking | Sentry | Free tier | Exception monitoring |
 | PR Review | Bugbot | Free/cheap | Automated code review |
@@ -800,8 +803,10 @@ Merge to main
 
 ### Environment Variables
 
+Production (Railway) must use a **PostgreSQL** URL for `DATABASE_URL`. SQLite is for local dev only.
+
 ```
-# Database
+# Database (production = PostgreSQL; SQLite only for local dev)
 DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname
 
 # External APIs

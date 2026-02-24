@@ -591,7 +591,7 @@ These are non-negotiable architectural decisions. See ARCHITECTURE.md for full r
 | Chatbot approach | Direct context injection | Data volume fits in context window, RAG is premature |
 | Primary API | RentCast (free tier) | 50 calls/month, commercial use allowed |
 | Auth | JWT (access + refresh tokens) | Stateless, standard pattern |
-| Backend deploy | Railway | Managed PostgreSQL included, supports FastAPI |
+| Backend deploy | Railway | Production uses PostgreSQL (add Postgres service); SQLite is local dev only, not for Railway |
 | Frontend deploy | Vercel | Free tier, React-native, instant deploys |
 | Python formatting | Black + isort + ruff | Enforced via pre-commit hooks |
 | JS/TS formatting | Prettier + ESLint | Enforced via pre-commit hooks |

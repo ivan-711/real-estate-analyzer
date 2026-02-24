@@ -18,13 +18,13 @@ The primary use case is analyzing duplexes and small multifamily rental properti
 
 ## Tech Stack
 
-**Backend:** Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic v2, PostgreSQL 16, Redis (caching), httpx (async HTTP client for external APIs)
+**Backend:** Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic v2, PostgreSQL 16, Redis (caching), httpx (async HTTP client for external APIs). **Production (including Railway) uses PostgreSQL only.** SQLite is for local development (or optional local testing) only, not for production or Railway.
 
 **Frontend:** React 18, Vite, Tailwind CSS, React Bits (reactbits.dev — animated UI components, TS-TW variant), Recharts or Chart.js, Axios
 
 **AI/ML:** Anthropic Claude API (production chatbot via direct context injection), Ollama + Llama (local dev fallback)
 
-**Infrastructure:** Docker Compose (local dev), Railway (backend + PostgreSQL deploy), Vercel (frontend deploy), GitHub Actions (CI/CD), Sentry (error tracking)
+**Infrastructure:** Docker Compose (local dev), Railway (backend + PostgreSQL deploy; production must use PostgreSQL on Railway, not SQLite), Vercel (frontend deploy), GitHub Actions (CI/CD), Sentry (error tracking)
 
 **Code Quality:** pre-commit hooks (Black, Prettier, isort, ruff), ESLint, pytest, Bugbot (automated PR review)
 
@@ -654,6 +654,8 @@ The README is a resume artifact. It should be written for two audiences: (1) a r
 **Mortgage formula edge cases:** Handle zero interest rate (the formula divides by zero — in that case, monthly payment is simply loan_amount / total_months). Handle zero loan amount (all-cash purchase — monthly mortgage is zero, DSCR is infinity or N/A). Handle zero down payment (100% financing — total_cash_invested is just closing + rehab costs).
 
 **Environment configuration:** Maintain separate configs for local dev, test, and production. Use Pydantic `BaseSettings` to load from environment variables with sensible defaults for dev. Never hardcode any API keys, database URLs, or secrets.
+
+**SQLite on Railway:** We do not support SQLite on Railway or any production environment. Production (including Railway) must use PostgreSQL. Alembic migrations use Postgres-specific types (e.g. UUID) and fail under SQLite. SQLite is supported only for local development or temporary local testing.
 
 ---
 

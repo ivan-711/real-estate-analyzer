@@ -80,7 +80,7 @@ This project is fully documented across three key documents:
 
 ## Deployment (Railway)
 
-The FastAPI backend is deployed to Railway. The backend Dockerfile expects the **repository root** as the Docker build context. See **[docs/railway-setup.md](docs/railway-setup.md)** for exact Railway dashboard settings (Root Directory = repo root, Dockerfile path = `backend/Dockerfile`) and optional config-as-code (`railway.toml`). After changing those settings, trigger a new deploy so the build succeeds.
+The FastAPI backend is deployed to Railway. **Production uses PostgreSQL** (add a PostgreSQL service on Railway and set `DATABASE_URL` to its URL); SQLite is for local development only and is not supported on Railway. The backend Dockerfile expects the **repository root** as the Docker build context. See **[docs/railway-setup.md](docs/railway-setup.md)** for exact Railway dashboard settings (Root Directory = repo root, Dockerfile path = `backend/Dockerfile`), **PostgreSQL on Railway** steps, and optional config-as-code (`railway.toml`). After changing settings or adding Postgres, trigger a new deploy so the build and migrations run correctly.
 
 ## Architecture Decision Records
 

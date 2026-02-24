@@ -1,10 +1,11 @@
 import axios from "axios";
 
-const baseURL =
+const rawBaseURL =
   typeof import.meta.env.VITE_API_URL === "string" &&
   import.meta.env.VITE_API_URL.length > 0
     ? import.meta.env.VITE_API_URL
     : "http://localhost:8000";
+const baseURL = rawBaseURL.replace(/\/+$/, "");
 
 export const api = axios.create({
   baseURL,
@@ -34,7 +35,15 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const ct = response.headers?.["content-type"] ?? "";
+    if (String(ct).toLowerCase().includes("text/html")) {
+      return Promise.reject(
+        new Error("API returned HTML. Check VITE_API_URL and Vercel rewrites."),
+      );
+    }
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       clearToken();

@@ -138,6 +138,14 @@ export default function Analyze() {
       );
       navigate(`/deals/${dealRes.data.id}`);
     } catch (err: unknown) {
+      const errMessage =
+        err instanceof Error ? err.message : String(err ?? "");
+      if (errMessage.includes("returned HTML")) {
+        setError(
+          "Guest preview is misconfigured. API base URL is pointing at the frontend. Fix VITE_API_URL.",
+        );
+        return;
+      }
       const msg =
         err && typeof err === "object" && "response" in err
           ? (

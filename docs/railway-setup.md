@@ -1,6 +1,10 @@
 # Railway deployment setup
 
-This document describes how to configure Railway so the **backend** builds and runs correctly. The backend Dockerfile (`backend/Dockerfile`) is written to be built with the **repository root** as the Docker build context (equivalent to `docker build -f backend/Dockerfile .`). If Railway is set to use `backend` as the root directory, the build context is only the `backend/` folder and the build fails with `"/backend": not found` at `COPY backend/ /app/backend`.
+This document describes how to configure Railway so the **backend** builds and runs correctly.
+
+**Database:** Production on Railway **must use PostgreSQL**. SQLite is for local development only; it is not supported for Railway or any other production deployment. Alembic migrations use PostgreSQL-specific types (e.g. UUID) and will not run correctly against SQLite. Use a PostgreSQL service on Railway and set `DATABASE_URL` to its URL (see [PostgreSQL on Railway](#postgresql-on-railway) below).
+
+The backend Dockerfile (`backend/Dockerfile`) is written to be built with the **repository root** as the Docker build context (equivalent to `docker build -f backend/Dockerfile .`). If Railway is set to use `backend` as the root directory, the build context is only the `backend/` folder and the build fails with `"/backend": not found` at `COPY backend/ /app/backend`.
 
 ## Option A: Repo root as build context (recommended)
 
@@ -26,6 +30,16 @@ Exact names may vary slightly by UI; look for **Root Directory**, **Dockerfile p
 
 1. **Trigger a new deploy** (e.g. from the Deployments tab or by pushing a commit) so the next build uses the new context and succeeds.
 2. Confirm the build completes and the service starts; then check the health endpoint (e.g. `https://<your-railway-url>/api/v1/health`) returns JSON.
+
+## PostgreSQL on Railway
+
+Production on Railway must use PostgreSQL. SQLite is not supported for deployed environments.
+
+1. **Add a PostgreSQL service** in the same Railway project: **New → Database → PostgreSQL** (or equivalent in the Railway dashboard).
+2. **Connect the backend to Postgres:** In the backend service, open **Variables** and set `DATABASE_URL` to the Postgres connection URL. Railway usually exposes this from the Postgres service as `DATABASE_URL` or `POSTGRES_URL` (use **Variables** on the Postgres service to copy the URL, or use the reference that Railway provides when you link the services).
+3. **Redeploy the backend** after setting `DATABASE_URL`. The next deploy will run `alembic upgrade head` against PostgreSQL and start the app. The change does not take effect until you redeploy.
+
+Do not use SQLite (`sqlite://` or `sqlite+aiosqlite://`) for the backend on Railway; migrations and the app are built for PostgreSQL.
 
 ### Optional: config as code
 
