@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 MAX_DEALS = 10
 MAX_HISTORY = 10
 MAX_TOKENS = 1024
-# claude-haiku-4-0: fast and affordable for deal Q&A; change as needed
-MODEL = "claude-haiku-4-0"
+# claude-haiku-4-5: fast and affordable for deal Q&A; change as needed
+MODEL = "claude-haiku-4-5"
 
 
 # --- Formatting helpers ------------------------------------------------------
