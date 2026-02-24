@@ -14,6 +14,7 @@ from app.schemas.deal import (
     DealPreviewRequest,
     DealPreviewResponse,
     DealResponse,
+    DealSummaryResponse,
     DealUpdate,
 )
 from app.services.deal_calculator import DealCalculator
@@ -285,6 +286,60 @@ async def list_deals(
     result = await db.execute(stmt)
     deals = result.scalars().all()
     return [DealResponse.model_validate(d) for d in deals]
+
+
+@router.get("/summary", response_model=DealSummaryResponse)
+async def get_deals_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DealSummaryResponse:
+    """Portfolio KPI summary for the current user. Returns zeros/nulls when no deals."""
+    result = await db.execute(
+        select(Deal).where(Deal.user_id == current_user.id)
+    )
+    deals = result.scalars().all()
+
+    if not deals:
+        return DealSummaryResponse(
+            total_monthly_cash_flow=Decimal("0"),
+            average_cap_rate=None,
+            average_cash_on_cash=None,
+            total_equity=Decimal("0"),
+            active_deal_count=0,
+            average_risk_score=None,
+        )
+
+    total_monthly_cash_flow = Decimal("0")
+    total_equity = Decimal("0")
+    cap_rates: list[Decimal] = []
+    coc_values: list[Decimal] = []
+    risk_scores: list[Decimal] = []
+
+    for deal in deals:
+        if deal.monthly_cash_flow is not None:
+            total_monthly_cash_flow += deal.monthly_cash_flow
+        if deal.total_cash_invested is not None:
+            total_equity += deal.total_cash_invested
+        if deal.cap_rate is not None:
+            cap_rates.append(deal.cap_rate)
+        if deal.cash_on_cash is not None:
+            coc_values.append(deal.cash_on_cash)
+        if deal.risk_score is not None:
+            risk_scores.append(deal.risk_score)
+
+    count = len(deals)
+    avg_cap = (sum(cap_rates) / len(cap_rates)) if cap_rates else None
+    avg_coc = (sum(coc_values) / len(coc_values)) if coc_values else None
+    avg_risk = (sum(risk_scores) / len(risk_scores)) if risk_scores else None
+
+    return DealSummaryResponse(
+        total_monthly_cash_flow=total_monthly_cash_flow,
+        average_cap_rate=avg_cap,
+        average_cash_on_cash=avg_coc,
+        total_equity=total_equity,
+        active_deal_count=count,
+        average_risk_score=avg_risk,
+    )
 
 
 @router.get("/{deal_id}", response_model=DealResponse)

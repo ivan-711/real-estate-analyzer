@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const SAMPLE_ADDRESS = "1515 N 7th St";
 const SAMPLE_CITY = "Sheboygan";
@@ -10,6 +11,11 @@ const SAMPLE_BEDS = 5;
 const SAMPLE_BATHS = 2;
 
 export default function Landing() {
+  const { isLoggedIn } = useAuth();
+
+  if (isLoggedIn) {
+    return <Navigate to="/dashboard" replace />;
+  }
   const sampleQuery = new URLSearchParams({
     address: `${SAMPLE_ADDRESS}, ${SAMPLE_CITY} ${SAMPLE_STATE} ${SAMPLE_ZIP}`,
     purchase_price: SAMPLE_PURCHASE,

@@ -3,6 +3,7 @@ import NavBar from "./components/NavBar";
 import Landing from "./pages/Landing";
 import Analyze from "./pages/Analyze";
 import Chat from "./pages/Chat";
+import Dashboard from "./pages/Dashboard";
 import DealResults from "./pages/DealResults";
 import DealsList from "./pages/DealsList";
 import Login from "./pages/Login";
@@ -16,6 +17,7 @@ function App() {
         <NavBar />
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/analyze" element={<Analyze />} />
           <Route path="/deals" element={<DealsList />} />
           <Route path="/deals/preview" element={<DealResults />} />

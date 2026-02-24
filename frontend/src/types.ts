@@ -161,6 +161,15 @@ export interface DealResponse {
   updated_at: string;
 }
 
+export interface DealSummaryResponse {
+  total_monthly_cash_flow: number;
+  average_cap_rate: number | null;
+  average_cash_on_cash: number | null;
+  total_equity: number;
+  active_deal_count: number;
+  average_risk_score: number | null;
+}
+
 export interface TokenResponse {
   access_token: string;
   refresh_token: string;

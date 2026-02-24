@@ -315,3 +315,105 @@ async def test_user_b_cannot_create_deal_for_user_a_property(
         headers=headers_b,
     )
     assert response.status_code == 404
+
+
+# ── Deal Summary endpoint tests ──────────────────────────────────────────
+
+
+async def test_deals_summary_empty_portfolio(
+    client: AsyncClient,
+    create_user,
+) -> None:
+    """User with no deals gets 200 with active_deal_count 0, sums 0, averages null."""
+    _, _, headers = await create_user(full_name="Empty Portfolio User")
+
+    response = await client.get("/api/v1/deals/summary", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["active_deal_count"] == 0
+    assert float(data["total_monthly_cash_flow"]) == 0
+    assert float(data["total_equity"]) == 0
+    assert data["average_cap_rate"] is None
+    assert data["average_cash_on_cash"] is None
+    assert data["average_risk_score"] is None
+
+
+async def test_deals_summary_single_deal(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_property,
+) -> None:
+    """Summary for a single deal matches that deal's metrics."""
+    create_resp = await client.post(
+        "/api/v1/deals/",
+        json=_deal_payload_for_property(str(test_property.id)),
+        headers=auth_headers,
+    )
+    assert create_resp.status_code == 201
+    deal = create_resp.json()
+
+    response = await client.get("/api/v1/deals/summary", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["active_deal_count"] == 1
+
+    if deal.get("monthly_cash_flow") is not None:
+        assert float(data["total_monthly_cash_flow"]) == float(deal["monthly_cash_flow"])
+    if deal.get("total_cash_invested") is not None:
+        assert float(data["total_equity"]) == float(deal["total_cash_invested"])
+    if deal.get("cap_rate") is not None:
+        assert float(data["average_cap_rate"]) == float(deal["cap_rate"])
+    if deal.get("cash_on_cash") is not None:
+        assert float(data["average_cash_on_cash"]) == float(deal["cash_on_cash"])
+    if deal.get("risk_score") is not None:
+        assert float(data["average_risk_score"]) == float(deal["risk_score"])
+
+
+async def test_deals_summary_multiple_deals(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_property,
+) -> None:
+    """Averages and sums are correct across multiple deals."""
+    payload_a = _deal_payload_for_property(str(test_property.id))
+    payload_a["deal_name"] = "Deal A"
+    payload_a["gross_monthly_rent"] = "1800"
+
+    payload_b = _deal_payload_for_property(str(test_property.id))
+    payload_b["deal_name"] = "Deal B"
+    payload_b["gross_monthly_rent"] = "2200"
+
+    resp_a = await client.post("/api/v1/deals/", json=payload_a, headers=auth_headers)
+    assert resp_a.status_code == 201
+    deal_a = resp_a.json()
+
+    resp_b = await client.post("/api/v1/deals/", json=payload_b, headers=auth_headers)
+    assert resp_b.status_code == 201
+    deal_b = resp_b.json()
+
+    response = await client.get("/api/v1/deals/summary", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["active_deal_count"] == 2
+
+    if deal_a.get("monthly_cash_flow") is not None and deal_b.get("monthly_cash_flow") is not None:
+        expected_cf = float(deal_a["monthly_cash_flow"]) + float(deal_b["monthly_cash_flow"])
+        assert abs(float(data["total_monthly_cash_flow"]) - expected_cf) < 0.02
+
+    if deal_a.get("total_cash_invested") is not None and deal_b.get("total_cash_invested") is not None:
+        expected_eq = float(deal_a["total_cash_invested"]) + float(deal_b["total_cash_invested"])
+        assert abs(float(data["total_equity"]) - expected_eq) < 0.02
+
+    if deal_a.get("cap_rate") is not None and deal_b.get("cap_rate") is not None:
+        expected_avg_cap = (float(deal_a["cap_rate"]) + float(deal_b["cap_rate"])) / 2
+        assert abs(float(data["average_cap_rate"]) - expected_avg_cap) < 0.01
+
+    if deal_a.get("cash_on_cash") is not None and deal_b.get("cash_on_cash") is not None:
+        expected_avg_coc = (float(deal_a["cash_on_cash"]) + float(deal_b["cash_on_cash"])) / 2
+        assert abs(float(data["average_cash_on_cash"]) - expected_avg_coc) < 0.01
+
+
+async def test_deals_summary_unauthenticated(client: AsyncClient) -> None:
+    """GET /api/v1/deals/summary without token returns 401."""
+    response = await client.get("/api/v1/deals/summary")
+    assert response.status_code == 401

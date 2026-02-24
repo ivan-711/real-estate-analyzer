@@ -115,6 +115,19 @@ class DealUpdate(BaseModel):
     utilities_monthly: Optional[Decimal] = Field(None, ge=0)
 
 
+class DealSummaryResponse(BaseModel):
+    """Portfolio KPI summary for the current user's deals."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    total_monthly_cash_flow: Decimal
+    average_cap_rate: Optional[Decimal] = None
+    average_cash_on_cash: Optional[Decimal] = None
+    total_equity: Decimal
+    active_deal_count: int
+    average_risk_score: Optional[Decimal] = None
+
+
 class DealResponse(BaseModel):
     """Deal as returned by API (includes all input and calculated fields)."""
 

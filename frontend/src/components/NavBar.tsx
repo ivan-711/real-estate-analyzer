@@ -25,6 +25,12 @@ export default function NavBar() {
             {isLoggedIn && (
               <>
                 <Link
+                  to="/dashboard"
+                  className="text-slate no-underline hover:text-blue-primary"
+                >
+                  Dashboard
+                </Link>
+                <Link
                   to="/deals"
                   className="text-slate no-underline hover:text-blue-primary"
                 >
