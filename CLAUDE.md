@@ -36,19 +36,9 @@ The primary use case is analyzing duplexes and small multifamily rental properti
 
 > **UPDATE THIS SECTION** as phases are completed.
 
-**Active Phase: Week 0 — PRD + Project Infrastructure**
+**Active Phase: Phase 2 — AI Chatbot (direct context injection)**
 
-Week 0 goals (before any application code):
-- Write the PRD (product spec, user flows, wireframes, design specs)
-- Create GitHub repo with README skeleton
-- Run `claude /init` to generate CLAUDE.md, then customize with these conventions
-- Set up pre-commit hooks: Black (Python), Prettier (React), isort, ruff
-- Set up GitHub Actions: run pytest + frontend tests on push to main
-- Set up Sentry accounts (free tier for FastAPI and React)
-- Configure `.env.example` with all required environment variables
-- Docker Compose for local dev (FastAPI + PostgreSQL + Redis)
-
-Week 0 is complete when: the repo has CI/CD passing (trivially, no tests yet), pre-commit hooks enforcing formatting, Sentry configured, and the PRD is written and reviewed.
+Phase 1 (Deal Calculator + Risk Scoring + Minimal Frontend) is complete and deployed. The project is now in Phase 2: building the AI chatbot that answers questions about the user's deals and portfolio using direct context injection (deal data serialized into the LLM prompt, no RAG). See PRD and ARCHITECTURE for chatbot scope and API design.
 
 **Upcoming phases (do not build yet):**
 - Phase 1 (Weeks 1–3): Deal Calculator + Risk Scoring + Minimal Frontend → DEPLOY

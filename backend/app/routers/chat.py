@@ -81,7 +81,7 @@ async def _stream_send(
 
     # Stream assistant response and accumulate content
     full_content: list[str] = []
-    async for chunk in stream_chat_response(user.id, body.message, history):
+    async for chunk in stream_chat_response(user.id, body.message, history, db):
         full_content.append(chunk)
         # SSE: send chunk (escape newlines in data)
         payload = json.dumps({"text": chunk})

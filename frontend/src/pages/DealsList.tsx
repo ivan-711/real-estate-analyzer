@@ -63,10 +63,7 @@ export default function DealsList() {
         <div className="mb-6 h-8 w-48 animate-pulse rounded bg-border" />
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-24 animate-pulse rounded-xl bg-border"
-            />
+            <div key={i} className="h-24 animate-pulse rounded-xl bg-border" />
           ))}
         </div>
       </div>
@@ -77,7 +74,10 @@ export default function DealsList() {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12">
         <p className="text-red-negative">{error}</p>
-        <Link to="/analyze" className="mt-4 inline-block text-blue-primary hover:underline">
+        <Link
+          to="/analyze"
+          className="mt-4 inline-block text-blue-primary hover:underline"
+        >
           Analyze a deal
         </Link>
       </div>
@@ -99,7 +99,10 @@ export default function DealsList() {
       {deals.length === 0 ? (
         <div className="rounded-xl border border-border bg-white p-8 text-center text-slate">
           <p>No saved deals yet.</p>
-          <Link to="/analyze" className="mt-4 inline-block text-blue-primary hover:underline">
+          <Link
+            to="/analyze"
+            className="mt-4 inline-block text-blue-primary hover:underline"
+          >
             Analyze a deal
           </Link>
         </div>
@@ -142,7 +145,7 @@ export default function DealsList() {
                     <>
                       <span className="text-muted">Risk:</span>
                       <span className="font-mono tabular-nums text-slate">
-                        {Math.round(Number(deal.risk_score))}/100
+                        Score: {Math.round(Number(deal.risk_score))}
                       </span>
                     </>
                   )}

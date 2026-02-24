@@ -65,6 +65,22 @@ function riskColorClass(score: number | undefined): string {
   return "bg-red-light text-red-negative";
 }
 
+/** Fixed-rate monthly payment. Principal in dollars, annualRatePercent e.g. 7, termYears e.g. 30. */
+function computeMonthlyMortgage(
+  principal: number,
+  annualRatePercent: number,
+  termYears: number,
+): number {
+  if (principal <= 0) return 0;
+  const n = termYears * 12;
+  if (n <= 0) return 0;
+  const r = annualRatePercent / 100 / 12;
+  if (r <= 0) return Math.round((principal / n) * 100) / 100;
+  const factor = Math.pow(1 + r, n);
+  const payment = (principal * r * factor) / (factor - 1);
+  return Math.round(payment * 100) / 100;
+}
+
 export default function DealResults() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -168,7 +184,40 @@ export default function DealResults() {
   const mgmtPct = deal.management_fee_pct ?? 10;
   const maintenance = grossRent * (maintPct / 100);
   const management = grossRent * (mgmtPct / 100);
-  const mortgage = deal.monthly_mortgage ?? 0;
+
+  const purchaseNum =
+    deal.purchase_price != null ? Number(deal.purchase_price) : NaN;
+  const downPct =
+    deal.down_payment_pct != null ? Number(deal.down_payment_pct) : NaN;
+  const ratePct = deal.interest_rate != null ? Number(deal.interest_rate) : NaN;
+  const termYears =
+    deal.loan_term_years != null ? Number(deal.loan_term_years) : NaN;
+  const hasFinancingInputs =
+    Number.isFinite(purchaseNum) &&
+    purchaseNum > 0 &&
+    Number.isFinite(downPct) &&
+    downPct >= 0 &&
+    downPct <= 100 &&
+    Number.isFinite(ratePct) &&
+    ratePct >= 0 &&
+    Number.isFinite(termYears) &&
+    termYears >= 1 &&
+    termYears <= 50;
+
+  const computedLoanAmount = hasFinancingInputs
+    ? purchaseNum * (1 - downPct / 100)
+    : undefined;
+  const computedMonthlyMortgage =
+    hasFinancingInputs && computedLoanAmount != null && computedLoanAmount > 0
+      ? computeMonthlyMortgage(computedLoanAmount, ratePct, termYears)
+      : undefined;
+
+  const loanAmountDisplay =
+    deal.loan_amount != null ? Number(deal.loan_amount) : computedLoanAmount;
+  const mortgage =
+    deal.monthly_mortgage != null
+      ? Number(deal.monthly_mortgage)
+      : (computedMonthlyMortgage ?? 0);
 
   const isPreview = id === "preview";
 
@@ -216,13 +265,19 @@ export default function DealResults() {
         hoa_monthly: stateInputs.hoa_monthly,
         utilities_monthly: stateInputs.utilities_monthly,
       };
-      const dealRes = await api.post<DealResponse>("/api/v1/deals/", dealPayload);
+      const dealRes = await api.post<DealResponse>(
+        "/api/v1/deals/",
+        dealPayload,
+      );
       navigate(`/deals/${dealRes.data.id}`);
     } catch (err: unknown) {
       const msg =
         err && typeof err === "object" && "response" in err
-          ? (err as { response?: { data?: { detail?: string | { detail?: string } } } })
-              .response?.data?.detail
+          ? (
+              err as {
+                response?: { data?: { detail?: string | { detail?: string } } };
+              }
+            ).response?.data?.detail
           : null;
       setSaveError(
         typeof msg === "string"
@@ -239,9 +294,19 @@ export default function DealResults() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-sans text-2xl font-bold text-navy">
-          Deal analysis
-        </h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-sans text-2xl font-bold text-navy">
+            Deal analysis
+          </h1>
+          {isPreview && !getToken() && (
+            <span
+              className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-slate"
+              title="Results are not saved until you log in and save"
+            >
+              Guest preview
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           {isPreview && (
             <>
@@ -263,7 +328,9 @@ export default function DealResults() {
                     {saveLoading ? "Saving…" : "Save deal"}
                   </button>
                   {saveError && (
-                    <span className="text-sm text-red-negative">{saveError}</span>
+                    <span className="text-sm text-red-negative">
+                      {saveError}
+                    </span>
                   )}
                 </>
               )}
@@ -290,7 +357,7 @@ export default function DealResults() {
         <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
           <h2 className="text-sm font-medium text-muted">Risk score</h2>
           <p className="font-mono text-3xl font-bold tabular-nums text-navy sm:text-4xl">
-            {score != null ? `${Math.round(score)} / 100` : "—"}
+            {score != null ? `Score: ${Math.round(score)}` : "—"}
           </p>
           <span
             className={`mt-2 inline-block rounded-full px-3 py-1 text-sm font-medium ${riskColorClass(score)}`}
@@ -367,18 +434,27 @@ export default function DealResults() {
                 )}
               </dd>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-muted">Loan amount</dt>
-              <dd className="font-mono font-semibold text-slate">
-                {formatCurrency(deal.loan_amount)}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted">Monthly mortgage</dt>
-              <dd className="font-mono font-semibold text-slate">
-                {formatCurrency(deal.monthly_mortgage)}
-              </dd>
-            </div>
+            {(hasFinancingInputs && computedLoanAmount != null) ||
+            deal.loan_amount != null ? (
+              <div className="flex justify-between">
+                <dt className="text-muted">Loan amount</dt>
+                <dd className="font-mono font-semibold text-slate">
+                  {formatCurrency(loanAmountDisplay)}
+                </dd>
+              </div>
+            ) : null}
+            {hasFinancingInputs || deal.monthly_mortgage != null ? (
+              <div className="flex justify-between">
+                <dt className="text-muted">Monthly mortgage</dt>
+                <dd className="font-mono font-semibold text-slate">
+                  {formatCurrency(
+                    deal.monthly_mortgage != null
+                      ? Number(deal.monthly_mortgage)
+                      : (computedMonthlyMortgage ?? 0),
+                  )}
+                </dd>
+              </div>
+            ) : null}
           </dl>
         </div>
         <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
@@ -487,6 +563,19 @@ export default function DealResults() {
                   : Number(factor.score) || 0;
               const raw = factor.raw;
               const pct = Math.min(100, Math.max(0, score));
+              const rawNum =
+                raw != null && raw !== ""
+                  ? typeof raw === "number"
+                    ? raw
+                    : Number(raw)
+                  : NaN;
+              const isPercentLike =
+                /vacancy|cap_rate|cash_on_cash|rate|pct|percent/i.test(key);
+              const rawFormatted = Number.isFinite(rawNum)
+                ? isPercentLike
+                  ? rawNum.toFixed(1)
+                  : rawNum.toFixed(2)
+                : null;
               return (
                 <li key={key} className="flex flex-wrap items-center gap-4">
                   <span className="w-40 shrink-0 text-sm text-slate">
@@ -501,11 +590,14 @@ export default function DealResults() {
                     />
                   </div>
                   <span className="shrink-0 font-mono text-sm tabular-nums text-slate">
-                    {score.toFixed(0)}/100
+                    Score: {score.toFixed(0)}
                   </span>
-                  {raw != null && (
-                    <span className="w-full shrink-0 text-xs text-muted sm:w-auto">
-                      raw: {String(raw)}
+                  {rawFormatted != null && (
+                    <span
+                      className="w-full shrink-0 text-xs text-muted sm:w-auto"
+                      title="Raw metric"
+                    >
+                      raw: {rawFormatted}
                     </span>
                   )}
                 </li>
