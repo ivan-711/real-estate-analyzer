@@ -36,13 +36,13 @@ The primary use case is analyzing duplexes and small multifamily rental properti
 
 > **UPDATE THIS SECTION** as phases are completed.
 
-**Active Phase: Phase 2 — AI Chatbot (direct context injection)**
+**Active Phase: Phase 3 — Market Comparisons + Dashboard + React Bits Animations**
 
-Phase 1 (Deal Calculator + Risk Scoring + Minimal Frontend) is complete and deployed. The project is now in Phase 2: building the AI chatbot that answers questions about the user's deals and portfolio using direct context injection (deal data serialized into the LLM prompt, no RAG). See PRD and ARCHITECTURE for chatbot scope and API design.
+**Completed phases:**
+- Phase 1 (Weeks 1–3): Deal Calculator + Risk Scoring + Minimal Frontend → COMPLETE
+- Phase 2 (Weeks 4–6): AI Chatbot (direct context injection, no RAG) → COMPLETE
 
 **Upcoming phases (do not build yet):**
-- Phase 1 (Weeks 1–3): Deal Calculator + Risk Scoring + Minimal Frontend → DEPLOY
-- Phase 2 (Weeks 4–6): AI Chatbot (direct context injection, no RAG)
 - Phase 3 (Weeks 7–9): Market Comparisons + Dashboard + React Bits Animations
 - Phase 4 (Weeks 10–12): Portfolio Tracking + Polish + Full Animation Rollout
 

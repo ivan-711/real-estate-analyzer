@@ -7,6 +7,7 @@ system prompt wording, deal summary format, and model choice.
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from collections.abc import AsyncIterator
@@ -26,9 +27,11 @@ logger = logging.getLogger(__name__)
 
 MAX_DEALS = 10
 MAX_HISTORY = 10
-MAX_TOKENS = 1024
+MAX_TOKENS = 2048
+MAX_INPUT_TOKENS = 2000
 # claude-haiku-4-5: fast and affordable for deal Q&A; change as needed
 MODEL = "claude-haiku-4-5"
+TOKEN_USAGE_PREFIX = "\n__TOKEN_USAGE__:"
 
 
 # --- Formatting helpers ------------------------------------------------------
@@ -240,6 +243,22 @@ async def stream_chat_response(
     ]
     messages.append({"role": "user", "content": message})
 
+    # Soft input-token guardrail (~4 chars per token heuristic)
+    def _estimate_tokens() -> int:
+        return len(system_prompt + "".join(m["content"] for m in messages)) // 4
+
+    estimated = _estimate_tokens()
+    trimmed = False
+    while estimated > MAX_INPUT_TOKENS and len(messages) > 1:
+        messages.pop(0)
+        estimated = _estimate_tokens()
+        trimmed = True
+    if trimmed:
+        logger.warning(
+            "Trimmed conversation history to fit input token budget",
+            extra={"estimated_tokens": estimated, "max_input_tokens": MAX_INPUT_TOKENS},
+        )
+
     # Stream from Claude
     try:
         client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
@@ -251,6 +270,14 @@ async def stream_chat_response(
         ) as stream:
             async for text in stream.text_stream:
                 yield text
+            final = stream.get_final_message()
+            usage_data = json.dumps(
+                {
+                    "input_tokens": final.usage.input_tokens,
+                    "output_tokens": final.usage.output_tokens,
+                }
+            )
+            yield f"{TOKEN_USAGE_PREFIX}{usage_data}"
     except anthropic.APIError as exc:
         logger.exception("Anthropic API error: %s", exc)
         yield "The AI assistant is temporarily unavailable. Please try again."

@@ -47,7 +47,14 @@ async def test_engine(test_database_url: str) -> AsyncGenerator[AsyncEngine, Non
     """
     from app.config import settings
     from app.database import Base
-    from app.models import Deal, Property, RefreshToken, User  # noqa: F401
+    from app.models import (  # noqa: F401
+        ChatMessage,
+        ChatSession,
+        Deal,
+        Property,
+        RefreshToken,
+        User,
+    )
 
     engine = create_async_engine(
         test_database_url,

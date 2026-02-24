@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime
@@ -17,12 +18,14 @@ from app.schemas.chat import (
     ChatSessionListItem,
     ChatSessionResponse,
 )
-from app.services.chatbot import stream_chat_response
+from app.services.chatbot import TOKEN_USAGE_PREFIX, stream_chat_response
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 
@@ -36,31 +39,9 @@ async def _stream_send(
     user: User,
     body: ChatMessageCreate,
     db: AsyncSession,
+    session: ChatSession,
 ) -> AsyncIterator[str]:
-    """Get or create session, save user message, stream assistant response, save assistant message; yield SSE events."""
-    session_id = body.session_id
-    if session_id is not None:
-        result = await db.execute(
-            select(ChatSession).where(
-                ChatSession.id == session_id,
-                ChatSession.user_id == user.id,
-            )
-        )
-        session = result.scalar_one_or_none()
-        if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Chat session not found",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-    else:
-        title = (
-            (body.message[:197] + "...") if len(body.message) > 200 else body.message
-        )
-        session = ChatSession(user_id=user.id, title=title or "New chat")
-        db.add(session)
-        await db.flush()
-
+    """Save user message, stream assistant response, save assistant message; yield SSE events."""
     # Load existing messages for history
     result = await db.execute(
         select(ChatMessage)
@@ -81,9 +62,19 @@ async def _stream_send(
 
     # Stream assistant response and accumulate content
     full_content: list[str] = []
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
     async for chunk in stream_chat_response(user.id, body.message, history, db):
+        if chunk.startswith(TOKEN_USAGE_PREFIX):
+            try:
+                usage = json.loads(chunk[len(TOKEN_USAGE_PREFIX) :])
+                input_tokens = usage.get("input_tokens")
+                output_tokens = usage.get("output_tokens")
+            except json.JSONDecodeError:
+                pass
+            continue
         full_content.append(chunk)
-        # SSE: send chunk (escape newlines in data)
         payload = json.dumps({"text": chunk})
         yield _sse_event("chunk", payload)
 
@@ -92,8 +83,8 @@ async def _stream_send(
         session_id=session.id,
         role="assistant",
         content=assistant_content,
-        input_tokens=None,
-        output_tokens=None,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
     )
     db.add(assistant_msg)
     await db.flush()
@@ -102,12 +93,26 @@ async def _stream_send(
     session.updated_at = datetime.utcnow()
     await db.commit()
 
-    # Final SSE event with ids
+    logger.info(
+        "chat_token_usage",
+        extra={
+            "user_id": str(user.id),
+            "session_id": str(session.id),
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": (input_tokens or 0) + (output_tokens or 0),
+            "model": "claude-haiku-4-5",
+        },
+    )
+
+    # Final SSE event with ids and token usage
     done_data = json.dumps(
         {
             "session_id": str(session.id),
             "user_message_id": str(user_msg.id),
             "assistant_message_id": str(assistant_msg.id),
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
         }
     )
     yield _sse_event("done", done_data)
@@ -124,8 +129,29 @@ async def send_message(
     Events: `chunk` (data: {"text": "..."}), then `done` (data: {"session_id", "user_message_id", "assistant_message_id"}).
     Creates a new session if session_id is omitted.
     """
+    if body.session_id is not None:
+        result = await db.execute(
+            select(ChatSession).where(
+                ChatSession.id == body.session_id,
+                ChatSession.user_id == current_user.id,
+            )
+        )
+        session = result.scalar_one_or_none()
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chat session not found",
+            )
+    else:
+        title = (
+            (body.message[:197] + "...") if len(body.message) > 200 else body.message
+        )
+        session = ChatSession(user_id=current_user.id, title=title or "New chat")
+        db.add(session)
+        await db.flush()
+
     return StreamingResponse(
-        _stream_send(current_user, body, db),
+        _stream_send(current_user, body, db, session),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
