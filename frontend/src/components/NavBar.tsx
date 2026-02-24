@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
-import { clearToken, getToken } from "../lib/api";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function NavBar() {
-  const isLoggedIn = !!getToken();
+  const { isLoggedIn, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <nav className="border-border bg-white shadow-sm">
@@ -43,8 +44,8 @@ export default function NavBar() {
               <button
                 type="button"
                 onClick={() => {
-                  clearToken();
-                  window.location.href = "/";
+                  logout();
+                  navigate("/");
                 }}
                 className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-slate hover:bg-blue-subtle"
               >

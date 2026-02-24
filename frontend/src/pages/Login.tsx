@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import api, { setToken } from "../lib/api";
+import api from "../lib/api";
 import type { TokenResponse } from "../types";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +21,7 @@ export default function Login() {
         email,
         password,
       });
-      setToken(res.data.access_token);
+      login(res.data.access_token);
       navigate("/", { replace: true });
     } catch (err: unknown) {
       const data =
