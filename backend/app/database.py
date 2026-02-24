@@ -6,10 +6,14 @@ from app.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
-# Use aiosqlite for SQLite async support (Railway fallback)
+# SQLite is supported only for local development (or temporary local testing).
+# Production (including Railway) must use PostgreSQL; migrations use Postgres-specific types (e.g. UUID).
 _database_url = settings.database_url
 if _database_url.startswith("sqlite://"):
     _database_url = _database_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+
+if _database_url.startswith("postgresql://") and "+asyncpg" not in _database_url:
+    _database_url = _database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 # SQLAlchemy 2.0 async engine
 engine = create_async_engine(
