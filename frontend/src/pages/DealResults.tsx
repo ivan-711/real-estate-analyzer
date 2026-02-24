@@ -1,10 +1,35 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { AxiosResponse } from "axios";
 import api, { getToken } from "../lib/api";
-import type { DealPreviewResponse, DealResponse } from "../types";
+import type {
+  DealCreatePayload,
+  DealPreviewPayload,
+  DealPreviewResponse,
+  DealResponse,
+  PropertyCreate,
+  PropertyResponse,
+} from "../types";
 
 type DealDisplay = DealResponse | DealPreviewResponse;
+
+function parseAddress(addressStr: string): {
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+} {
+  const trimmed = addressStr.trim();
+  const parts = trimmed.split(",").map((p) => p.trim());
+  const address = parts[0] || trimmed;
+  const lastPart = parts[1] || parts[2] || "";
+  const stateZipMatch = lastPart.match(/([A-Z]{2})\s*(\d{5}(-\d{4})?)$/);
+  const state = stateZipMatch?.[1] || "WI";
+  const zip = stateZipMatch?.[2] || "";
+  const city =
+    lastPart.replace(/\s+[A-Z]{2}\s*\d{5}(-\d{4})?$/, "").trim() || "";
+  return { address, city, state, zip };
+}
 
 function formatCurrency(n: number | undefined): string {
   if (n === undefined || n === null) return "—";
@@ -43,10 +68,15 @@ function riskColorClass(score: number | undefined): string {
 export default function DealResults() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const stateDeal = location.state?.deal as DealPreviewResponse | undefined;
+  const stateInputs = location.state?.inputs as DealPreviewPayload | undefined;
+  const stateAddress = location.state?.address as string | undefined;
   const [deal, setDeal] = useState<DealDisplay | null>(stateDeal ?? null);
   const [loading, setLoading] = useState(!stateDeal);
   const [error, setError] = useState<string | null>(null);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (id === "preview" && stateDeal) {
@@ -140,32 +170,126 @@ export default function DealResults() {
   const management = grossRent * (mgmtPct / 100);
   const mortgage = deal.monthly_mortgage ?? 0;
 
+  const isPreview = id === "preview";
+
+  async function handleSaveDeal() {
+    if (!stateInputs || !stateAddress?.trim()) {
+      setSaveError("Missing form data. Go back and analyze again.");
+      return;
+    }
+    const { address: addr, city, state, zip } = parseAddress(stateAddress);
+    if (!addr) {
+      setSaveError("Address is required to save.");
+      return;
+    }
+    setSaveError(null);
+    setSaveLoading(true);
+    try {
+      const propertyPayload: PropertyCreate = {
+        address: addr,
+        city: city || "Sheboygan",
+        state: state || "WI",
+        zip_code: zip || "53081",
+        property_type: "duplex",
+        num_units: 2,
+      };
+      const propRes = await api.post<PropertyResponse>(
+        "/api/v1/properties/",
+        propertyPayload,
+      );
+      const dealPayload: DealCreatePayload = {
+        property_id: propRes.data.id,
+        purchase_price: stateInputs.purchase_price,
+        gross_monthly_rent: stateInputs.gross_monthly_rent,
+        deal_name: stateInputs.deal_name,
+        down_payment_pct: stateInputs.down_payment_pct,
+        interest_rate: stateInputs.interest_rate,
+        loan_term_years: stateInputs.loan_term_years,
+        vacancy_rate_pct: stateInputs.vacancy_rate_pct,
+        property_tax_monthly: stateInputs.property_tax_monthly,
+        insurance_monthly: stateInputs.insurance_monthly,
+        maintenance_rate_pct: stateInputs.maintenance_rate_pct,
+        management_fee_pct: stateInputs.management_fee_pct,
+        closing_costs: stateInputs.closing_costs,
+        rehab_costs: stateInputs.rehab_costs,
+        other_monthly_income: stateInputs.other_monthly_income,
+        hoa_monthly: stateInputs.hoa_monthly,
+        utilities_monthly: stateInputs.utilities_monthly,
+      };
+      const dealRes = await api.post<DealResponse>("/api/v1/deals/", dealPayload);
+      navigate(`/deals/${dealRes.data.id}`);
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { detail?: string | { detail?: string } } } })
+              .response?.data?.detail
+          : null;
+      setSaveError(
+        typeof msg === "string"
+          ? msg
+          : msg && typeof msg === "object" && "detail" in msg
+            ? String((msg as { detail: string }).detail)
+            : "Failed to save deal. Try again.",
+      );
+    } finally {
+      setSaveLoading(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-sans text-2xl font-bold text-navy">
           Deal analysis
         </h1>
-        <Link
-          to="/analyze"
-          className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-slate no-underline hover:bg-blue-subtle"
-        >
-          New analysis
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          {isPreview && (
+            <>
+              {!getToken() ? (
+                <Link
+                  to="/login?redirect=/deals/preview"
+                  className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-slate no-underline hover:bg-blue-subtle"
+                >
+                  Log in to save
+                </Link>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSaveDeal}
+                    disabled={saveLoading}
+                    className="rounded-lg bg-blue-primary px-4 py-2 text-sm font-medium text-white hover:bg-blue-light disabled:opacity-50"
+                  >
+                    {saveLoading ? "Saving…" : "Save deal"}
+                  </button>
+                  {saveError && (
+                    <span className="text-sm text-red-negative">{saveError}</span>
+                  )}
+                </>
+              )}
+            </>
+          )}
+          <Link
+            to="/analyze"
+            className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-slate no-underline hover:bg-blue-subtle"
+          >
+            New analysis
+          </Link>
+        </div>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-white p-6 shadow-sm">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
           <h2 className="text-sm font-medium text-muted">Monthly cash flow</h2>
           <p
-            className={`font-mono text-4xl font-bold ${mcFlow != null && mcFlow >= 0 ? "text-green-positive" : "text-red-negative"}`}
+            className={`font-mono text-3xl font-bold tabular-nums sm:text-4xl ${mcFlow != null && mcFlow >= 0 ? "text-green-positive" : "text-red-negative"}`}
           >
             {formatCurrency(deal.monthly_cash_flow)}
           </p>
         </div>
-        <div className="rounded-xl border border-border bg-white p-6 shadow-sm">
+        <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
           <h2 className="text-sm font-medium text-muted">Risk score</h2>
-          <p className="font-mono text-4xl font-bold text-navy">
+          <p className="font-mono text-3xl font-bold tabular-nums text-navy sm:text-4xl">
             {score != null ? `${Math.round(score)} / 100` : "—"}
           </p>
           <span
@@ -180,48 +304,48 @@ export default function DealResults() {
         <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
           Key metrics
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="break-words">
             <span className="text-sm text-muted">NOI (annual)</span>
-            <p className="font-mono font-semibold text-slate">
+            <p className="font-mono font-semibold tabular-nums text-slate">
               {formatCurrency(deal.noi)}
             </p>
           </div>
-          <div>
+          <div className="break-words">
             <span className="text-sm text-muted">Cap rate</span>
-            <p className="font-mono font-semibold text-slate">
+            <p className="font-mono font-semibold tabular-nums text-slate">
               {formatPercent(deal.cap_rate)}
             </p>
           </div>
-          <div>
+          <div className="break-words">
             <span className="text-sm text-muted">Cash-on-cash</span>
-            <p className="font-mono font-semibold text-slate">
+            <p className="font-mono font-semibold tabular-nums text-slate">
               {formatPercent(deal.cash_on_cash)}
             </p>
           </div>
-          <div>
+          <div className="break-words">
             <span className="text-sm text-muted">DSCR</span>
-            <p className="font-mono font-semibold text-slate">
+            <p className="font-mono font-semibold tabular-nums text-slate">
               {formatNumber(deal.dscr)}
             </p>
           </div>
-          <div>
+          <div className="break-words">
             <span className="text-sm text-muted">GRM</span>
-            <p className="font-mono font-semibold text-slate">
+            <p className="font-mono font-semibold tabular-nums text-slate">
               {formatNumber(deal.grm)}
             </p>
           </div>
-          <div>
+          <div className="break-words">
             <span className="text-sm text-muted">Total cash invested</span>
-            <p className="font-mono font-semibold text-slate">
+            <p className="font-mono font-semibold tabular-nums text-slate">
               {formatCurrency(deal.total_cash_invested)}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="mt-8 grid gap-8 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-white p-6 shadow-sm">
+      <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2">
+        <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
             Financing summary
           </h2>
@@ -257,7 +381,7 @@ export default function DealResults() {
             </div>
           </dl>
         </div>
-        <div className="rounded-xl border border-border bg-white p-6 shadow-sm">
+        <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
             Monthly expense breakdown
           </h2>
@@ -320,28 +444,28 @@ export default function DealResults() {
         <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
           IRR & equity
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="break-words">
             <span className="text-sm text-muted">IRR 5 yr</span>
-            <p className="font-mono font-semibold text-slate">
+            <p className="font-mono font-semibold tabular-nums text-slate">
               {formatPercent(deal.irr_5yr)}
             </p>
           </div>
-          <div>
+          <div className="break-words">
             <span className="text-sm text-muted">IRR 10 yr</span>
-            <p className="font-mono font-semibold text-slate">
+            <p className="font-mono font-semibold tabular-nums text-slate">
               {formatPercent(deal.irr_10yr)}
             </p>
           </div>
-          <div>
+          <div className="break-words">
             <span className="text-sm text-muted">Equity buildup 5 yr</span>
-            <p className="font-mono font-semibold text-slate">
+            <p className="font-mono font-semibold tabular-nums text-slate">
               {formatCurrency(deal.equity_buildup_5yr)}
             </p>
           </div>
-          <div>
+          <div className="break-words">
             <span className="text-sm text-muted">Equity buildup 10 yr</span>
-            <p className="font-mono font-semibold text-slate">
+            <p className="font-mono font-semibold tabular-nums text-slate">
               {formatCurrency(deal.equity_buildup_10yr)}
             </p>
           </div>
@@ -355,25 +479,35 @@ export default function DealResults() {
           </h2>
           <ul className="space-y-3">
             {Object.entries(deal.risk_factors).map(([key, val]) => {
-              const numVal =
-                typeof val === "number" ? val : parseFloat(String(val)) || 0;
-              const pct = Math.min(100, Math.max(0, numVal));
+              type RiskFactor = { score: number; raw?: string | number | null };
+              const factor = (val ?? {}) as RiskFactor;
+              const score =
+                typeof factor.score === "number"
+                  ? factor.score
+                  : Number(factor.score) || 0;
+              const raw = factor.raw;
+              const pct = Math.min(100, Math.max(0, score));
               return (
-                <li key={key} className="flex items-center gap-4">
+                <li key={key} className="flex flex-wrap items-center gap-4">
                   <span className="w-40 shrink-0 text-sm text-slate">
                     {key
                       .replace(/_/g, " ")
                       .replace(/\b\w/g, (c) => c.toUpperCase())}
                   </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-border">
+                  <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-border">
                     <div
                       className="h-full rounded-full bg-blue-primary transition-all"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className="font-mono text-sm text-slate">
-                    {typeof val === "number" ? val.toFixed(0) : String(val)}
+                  <span className="shrink-0 font-mono text-sm tabular-nums text-slate">
+                    {score.toFixed(0)}/100
                   </span>
+                  {raw != null && (
+                    <span className="w-full shrink-0 text-xs text-muted sm:w-auto">
+                      raw: {String(raw)}
+                    </span>
+                  )}
                 </li>
               );
             })}

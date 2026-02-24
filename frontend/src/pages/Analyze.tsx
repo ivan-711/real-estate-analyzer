@@ -44,6 +44,59 @@ function parseAddress(addressStr: string): {
   return { address, city, state, zip };
 }
 
+function validate(
+  address: string,
+  purchasePrice: string,
+  grossMonthlyRent: string,
+  advanced: typeof MIDWEST_DEFAULTS,
+): string | null {
+  const addrTrim = address.trim();
+  if (addrTrim.length < 5) {
+    return "Address is required (at least 5 characters).";
+  }
+  const purchase = Number(purchasePrice);
+  if (Number.isNaN(purchase) || purchase <= 0) {
+    return "Purchase price must be a number greater than 0.";
+  }
+  const rent = Number(grossMonthlyRent);
+  if (Number.isNaN(rent) || rent < 0) {
+    return "Gross monthly rent must be a number ≥ 0.";
+  }
+  const downPct = Number(advanced.down_payment_pct);
+  if (!Number.isNaN(downPct) && (downPct < 0 || downPct > 100)) {
+    return "Down payment % must be between 0 and 100.";
+  }
+  const rate = Number(advanced.interest_rate);
+  if (!Number.isNaN(rate) && (rate < 0 || rate > 30)) {
+    return "Interest rate must be between 0 and 30%.";
+  }
+  const term = Number(advanced.loan_term_years);
+  if (!Number.isNaN(term) && (term < 1 || term > 50)) {
+    return "Loan term must be between 1 and 50 years.";
+  }
+  const vacancy = Number(advanced.vacancy_rate_pct);
+  if (!Number.isNaN(vacancy) && (vacancy < 0 || vacancy > 100)) {
+    return "Vacancy % must be between 0 and 100.";
+  }
+  const tax = Number(advanced.property_tax_monthly);
+  if (!Number.isNaN(tax) && tax < 0) {
+    return "Property tax must be ≥ 0.";
+  }
+  const ins = Number(advanced.insurance_monthly);
+  if (!Number.isNaN(ins) && ins < 0) {
+    return "Insurance must be ≥ 0.";
+  }
+  const maint = Number(advanced.maintenance_rate_pct);
+  if (!Number.isNaN(maint) && (maint < 0 || maint > 100)) {
+    return "Maintenance % must be between 0 and 100.";
+  }
+  const mgmt = Number(advanced.management_fee_pct);
+  if (!Number.isNaN(mgmt) && (mgmt < 0 || mgmt > 100)) {
+    return "Management % must be between 0 and 100.";
+  }
+  return null;
+}
+
 export default function Analyze() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -63,8 +116,14 @@ export default function Analyze() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!purchasePrice || !grossMonthlyRent) {
-      setError("Please fill in purchase price and gross monthly rent.");
+    const validationError = validate(
+      address,
+      purchasePrice,
+      grossMonthlyRent,
+      advanced,
+    );
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setLoading(true);
@@ -92,7 +151,9 @@ export default function Analyze() {
           "/api/v1/deals/preview",
           previewPayload,
         );
-        navigate("/deals/preview", { state: { deal: previewRes.data } });
+        navigate("/deals/preview", {
+          state: { deal: previewRes.data, inputs: previewPayload, address },
+        });
         return;
       }
       const { address: addr, city, state, zip } = parseAddress(address);
@@ -209,12 +270,12 @@ export default function Analyze() {
               <input
                 id="purchase_price"
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
+                min={1}
                 value={purchasePrice}
                 onChange={(e) => setPurchasePrice(e.target.value)}
                 placeholder="220000"
                 className="font-mono w-full rounded-lg border border-border px-4 py-2.5 text-right placeholder-muted focus:border-blue-primary focus:ring-2 focus:ring-blue-primary"
-                required
               />
             </div>
             <div>
@@ -227,12 +288,12 @@ export default function Analyze() {
               <input
                 id="gross_monthly_rent"
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
+                min={0}
                 value={grossMonthlyRent}
                 onChange={(e) => setGrossMonthlyRent(e.target.value)}
                 placeholder="1700"
                 className="font-mono w-full rounded-lg border border-border px-4 py-2.5 text-right placeholder-muted focus:border-blue-primary focus:ring-2 focus:ring-blue-primary"
-                required
               />
             </div>
           </div>
@@ -256,6 +317,9 @@ export default function Analyze() {
                   </label>
                   <input
                     type="text"
+                    inputMode="decimal"
+                    min={0}
+                    max={100}
                     value={advanced.down_payment_pct}
                     onChange={(e) =>
                       setAdvanced((a) => ({
@@ -272,6 +336,9 @@ export default function Analyze() {
                   </label>
                   <input
                     type="text"
+                    inputMode="decimal"
+                    min={0}
+                    max={30}
                     value={advanced.interest_rate}
                     onChange={(e) =>
                       setAdvanced((a) => ({
@@ -288,6 +355,8 @@ export default function Analyze() {
                   </label>
                   <input
                     type="number"
+                    min={1}
+                    max={50}
                     value={advanced.loan_term_years}
                     onChange={(e) =>
                       setAdvanced((a) => ({
@@ -304,6 +373,9 @@ export default function Analyze() {
                   </label>
                   <input
                     type="text"
+                    inputMode="decimal"
+                    min={0}
+                    max={100}
                     value={advanced.vacancy_rate_pct}
                     onChange={(e) =>
                       setAdvanced((a) => ({
@@ -320,6 +392,8 @@ export default function Analyze() {
                   </label>
                   <input
                     type="text"
+                    inputMode="decimal"
+                    min={0}
                     value={advanced.property_tax_monthly}
                     onChange={(e) =>
                       setAdvanced((a) => ({
@@ -336,6 +410,8 @@ export default function Analyze() {
                   </label>
                   <input
                     type="text"
+                    inputMode="decimal"
+                    min={0}
                     value={advanced.insurance_monthly}
                     onChange={(e) =>
                       setAdvanced((a) => ({
@@ -352,6 +428,9 @@ export default function Analyze() {
                   </label>
                   <input
                     type="text"
+                    inputMode="decimal"
+                    min={0}
+                    max={100}
                     value={advanced.maintenance_rate_pct}
                     onChange={(e) =>
                       setAdvanced((a) => ({
@@ -368,6 +447,9 @@ export default function Analyze() {
                   </label>
                   <input
                     type="text"
+                    inputMode="decimal"
+                    min={0}
+                    max={100}
                     value={advanced.management_fee_pct}
                     onChange={(e) =>
                       setAdvanced((a) => ({
