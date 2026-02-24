@@ -22,6 +22,12 @@ export default function NavBar() {
             >
               Analyze
             </Link>
+            <Link
+              to="/markets"
+              className="text-slate no-underline hover:text-blue-primary"
+            >
+              Markets
+            </Link>
             {isLoggedIn && (
               <>
                 <Link

@@ -6,6 +6,7 @@ import Chat from "./pages/Chat";
 import Dashboard from "./pages/Dashboard";
 import DealResults from "./pages/DealResults";
 import DealsList from "./pages/DealsList";
+import MarketComparison from "./pages/MarketComparison";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
@@ -23,6 +24,7 @@ function App() {
           <Route path="/deals/preview" element={<DealResults />} />
           <Route path="/deals/:id" element={<DealResults />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/markets" element={<MarketComparison />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="*" element={<NotFound />} />

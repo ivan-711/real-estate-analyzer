@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { MarketSnapshot } from "../types";
 
 const rawBaseURL =
   typeof import.meta.env.VITE_API_URL === "string" &&
@@ -56,3 +57,24 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+export async function getMarketSnapshot(zipCode: string): Promise<MarketSnapshot> {
+  const res = await api.get<MarketSnapshot>(`/api/v1/markets/${zipCode}`);
+  return res.data;
+}
+
+export async function getMarketComparison(zips: string[]): Promise<MarketSnapshot[]> {
+  const res = await api.get<MarketSnapshot[]>(
+    `/api/v1/markets/compare?zips=${zips.join(",")}`,
+  );
+  return res.data;
+}
+
+export async function getMarketHistory(
+  zipCode: string,
+): Promise<{ zip_code: string; snapshots: MarketSnapshot[] }> {
+  const res = await api.get<{ zip_code: string; snapshots: MarketSnapshot[] }>(
+    `/api/v1/markets/${zipCode}/history`,
+  );
+  return res.data;
+}

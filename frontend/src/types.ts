@@ -203,3 +203,23 @@ export interface ChatSessionListItem {
   created_at: string;
   updated_at: string;
 }
+
+export interface MarketSnapshot {
+  id: string;
+  zip_code: string;
+  city: string | null;
+  state: string;
+  snapshot_date: string;
+  median_home_value: number | null;
+  median_rent: number | null;
+  avg_price_per_sqft: number | null;
+  avg_days_on_market: number | null;
+  inventory_count: number | null;
+  avg_cap_rate: number | null;
+  avg_vacancy_rate: number | null;
+  rent_to_price_ratio: number | null;
+  yoy_appreciation_pct: number | null;
+  population_growth_pct: number | null;
+  data_source: string | null;
+  created_at: string;
+}
