@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.config import settings
 from app.integrations.rentcast import RentCastError
-from app.routers import auth, chat, deals, properties, risk
+from app.routers import auth, chat, deals, markets, properties, risk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -59,6 +59,7 @@ app.include_router(properties.router)
 app.include_router(deals.router)
 app.include_router(risk.router)
 app.include_router(chat.router)
+app.include_router(markets.router)
 
 
 @app.get("/")
