@@ -22,12 +22,20 @@ export default function NavBar() {
               Analyze
             </Link>
             {isLoggedIn && (
-              <Link
-                to="/deals"
-                className="text-slate no-underline hover:text-blue-primary"
-              >
-                Deals
-              </Link>
+              <>
+                <Link
+                  to="/deals"
+                  className="text-slate no-underline hover:text-blue-primary"
+                >
+                  Deals
+                </Link>
+                <Link
+                  to="/chat"
+                  className="text-slate no-underline hover:text-blue-primary"
+                >
+                  Chat
+                </Link>
+              </>
             )}
           </div>
           <div className="flex items-center gap-4">

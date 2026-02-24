@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
+    from app.models.chat import ChatSession
     from app.models.deal import Deal
     from app.models.property import Property
     from app.models.refresh_token import RefreshToken
@@ -43,4 +44,7 @@ class User(Base):
     )
     deals: Mapped[list["Deal"]] = relationship(
         "Deal", back_populates="user", cascade="all, delete-orphan"
+    )
+    chat_sessions: Mapped[list["ChatSession"]] = relationship(
+        "ChatSession", back_populates="user", cascade="all, delete-orphan"
     )

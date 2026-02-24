@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import NavBar from "./components/NavBar";
 import Landing from "./pages/Landing";
 import Analyze from "./pages/Analyze";
+import Chat from "./pages/Chat";
 import DealResults from "./pages/DealResults";
 import DealsList from "./pages/DealsList";
 import Login from "./pages/Login";
@@ -19,6 +20,7 @@ function App() {
           <Route path="/deals" element={<DealsList />} />
           <Route path="/deals/preview" element={<DealResults />} />
           <Route path="/deals/:id" element={<DealResults />} />
+          <Route path="/chat" element={<Chat />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="*" element={<NotFound />} />

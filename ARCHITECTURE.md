@@ -464,7 +464,7 @@ The chatbot can answer questions like:
 ### Cost Controls
 
 - Token budget: ~4,000 tokens per conversation turn (input + output)
-- Rate limit: 20 chat requests per minute per user
+- Rate limit: 20 chat requests per minute per user (add via existing middleware or slowapi when needed; optional for first pass)
 - Log token usage per session for cost tracking
 - Use Ollama + Llama locally during development to avoid API costs
 

@@ -165,3 +165,32 @@ export interface TokenResponse {
   access_token: string;
   refresh_token: string;
 }
+
+export interface ChatMessageResponse {
+  id: string;
+  session_id: string;
+  role: string;
+  content: string;
+  referenced_deals?: string[] | null;
+  referenced_properties?: string[] | null;
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  created_at: string;
+}
+
+export interface ChatSessionResponse {
+  id: string;
+  user_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+  messages: ChatMessageResponse[];
+}
+
+export interface ChatSessionListItem {
+  id: string;
+  user_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}

@@ -7,6 +7,9 @@ const rawBaseURL =
     : "http://localhost:8000";
 const baseURL = rawBaseURL.replace(/\/+$/, "");
 
+/** Base URL for API (e.g. for fetch-based SSE where axios is not used). */
+export const apiBaseURL = baseURL;
+
 export const api = axios.create({
   baseURL,
   headers: { "Content-Type": "application/json" },

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.models.chat import ChatMessage, ChatSession
 from app.models.deal import Deal
 from app.models.property import Property
 from app.models.refresh_token import RefreshToken
@@ -12,4 +13,6 @@ __all__ = [
     "RefreshToken",
     "Property",
     "Deal",
+    "ChatSession",
+    "ChatMessage",
 ]
