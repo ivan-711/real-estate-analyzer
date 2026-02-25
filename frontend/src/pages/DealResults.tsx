@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { AxiosResponse } from "axios";
-import api, { getToken } from "../lib/api";
+import api, { getDealProjections, getToken } from "../lib/api";
+import AmortizationChart from "../components/charts/AmortizationChart";
+import CashFlowChart from "../components/charts/CashFlowChart";
+import EquityBuildupChart from "../components/charts/EquityBuildupChart";
 import type {
   DealCreatePayload,
   DealPreviewPayload,
   DealPreviewResponse,
+  DealProjectionsResponse,
   DealResponse,
   PropertyCreate,
   PropertyResponse,
@@ -93,6 +97,17 @@ export default function DealResults() {
   const [error, setError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [projections, setProjections] =
+    useState<DealProjectionsResponse | null>(null);
+
+  useEffect(() => {
+    if (!id || id === "preview" || !getToken()) return;
+    getDealProjections(id)
+      .then(setProjections)
+      .catch(() => {
+        // Charts simply don't render if projections fetch fails
+      });
+  }, [id]);
 
   useEffect(() => {
     if (id === "preview" && stateDeal) {
@@ -547,6 +562,59 @@ export default function DealResults() {
           </div>
         </div>
       </div>
+
+      {projections && projections.yearly_projections.length > 0 && (
+        <div className="mt-8 rounded-xl border border-border bg-white p-6 shadow-sm">
+          <h2 className="mb-6 font-sans text-lg font-semibold text-navy">
+            {projections.parameters.projection_years}-Year Projections
+          </h2>
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+            <div>
+              <h3 className="mb-3 text-sm font-medium text-slate">
+                Equity Buildup
+              </h3>
+              <EquityBuildupChart data={projections.yearly_projections} />
+            </div>
+            <div>
+              <h3 className="mb-3 text-sm font-medium text-slate">
+                Annual Cash Flow
+              </h3>
+              <CashFlowChart data={projections.yearly_projections} />
+            </div>
+            <div>
+              <h3 className="mb-3 text-sm font-medium text-slate">
+                Principal vs. Interest
+              </h3>
+              <AmortizationChart data={projections.yearly_projections} />
+            </div>
+          </div>
+          {(projections.irr_5_year != null ||
+            projections.irr_10_year != null) && (
+            <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-4">
+              <div>
+                <span className="text-sm text-muted">
+                  Projected IRR 5 yr
+                </span>
+                <p className="font-mono font-semibold tabular-nums text-slate">
+                  {projections.irr_5_year != null
+                    ? formatPercent(projections.irr_5_year * 100)
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <span className="text-sm text-muted">
+                  Projected IRR 10 yr
+                </span>
+                <p className="font-mono font-semibold tabular-nums text-slate">
+                  {projections.irr_10_year != null
+                    ? formatPercent(projections.irr_10_year * 100)
+                    : "—"}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {deal.risk_factors && Object.keys(deal.risk_factors).length > 0 && (
         <div className="mt-8 rounded-xl border border-border bg-white p-6 shadow-sm">

@@ -223,3 +223,34 @@ export interface MarketSnapshot {
   data_source: string | null;
   created_at: string;
 }
+
+export interface YearlyProjection {
+  year: number;
+  property_value: number;
+  loan_balance: number;
+  equity: number;
+  principal_paid: number;
+  interest_paid: number;
+  annual_gross_rent: number;
+  annual_expenses: number;
+  annual_mortgage_payment: number;
+  annual_net_cash_flow: number;
+  cumulative_cash_flow: number;
+}
+
+export interface ProjectionParameters {
+  projection_years: number;
+  annual_appreciation_pct: number;
+  annual_rent_growth_pct: number;
+  annual_expense_growth_pct: number;
+  selling_cost_pct: number;
+}
+
+export interface DealProjectionsResponse {
+  deal_id: string;
+  deal_name: string | null;
+  parameters: ProjectionParameters;
+  irr_5_year: number | null;
+  irr_10_year: number | null;
+  yearly_projections: YearlyProjection[];
+}

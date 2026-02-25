@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Optional
 
 from app.database import get_db
@@ -13,12 +13,17 @@ from app.schemas.deal import (
     DealCreate,
     DealPreviewRequest,
     DealPreviewResponse,
+    DealProjectionsResponse,
     DealResponse,
     DealSummaryResponse,
     DealUpdate,
+    ProjectionParameters,
+    YearlyProjection,
 )
 from app.services.deal_calculator import DealCalculator
+from app.services.projections import compute_yearly_projections
 from app.services.risk_engine import RiskEngine
+from app.utils.financial import calculate_monthly_mortgage
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -85,6 +90,33 @@ def _json_safe(obj: Any) -> Any:
     if isinstance(obj, (list, tuple)):
         return [_json_safe(v) for v in obj]
     return obj
+
+
+def _compute_base_monthly_expenses(deal: Deal) -> Decimal:
+    """Sum monthly expenses deducted from gross rent (excluding mortgage).
+
+    Includes vacancy loss and all operating expenses. This represents the
+    base Year-1 monthly expense figure that the projections service grows
+    year-over-year by the expense growth rate.
+    """
+    rent = deal.gross_monthly_rent
+    vacancy_rate = deal.vacancy_rate_pct if deal.vacancy_rate_pct is not None else Decimal("5")
+    maintenance_rate = deal.maintenance_rate_pct if deal.maintenance_rate_pct is not None else Decimal("5")
+    management_rate = deal.management_fee_pct if deal.management_fee_pct is not None else Decimal("10")
+
+    vacancy_loss = (rent * vacancy_rate / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    maintenance = (rent * maintenance_rate / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    management = (rent * management_rate / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    return (
+        vacancy_loss
+        + (deal.property_tax_monthly or Decimal("0"))
+        + (deal.insurance_monthly or Decimal("0"))
+        + maintenance
+        + management
+        + (deal.hoa_monthly or Decimal("0"))
+        + (deal.utilities_monthly or Decimal("0"))
+    ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def _apply_risk_result(deal: Deal, risk_result: dict) -> None:
@@ -362,6 +394,119 @@ async def get_deal(
             detail="Deal not found",
         )
     return DealResponse.model_validate(deal)
+
+
+@router.get("/{deal_id}/projections", response_model=DealProjectionsResponse)
+async def get_deal_projections(
+    deal_id: uuid.UUID,
+    years: int = Query(10, ge=1, le=30),
+    appreciation_pct: Decimal = Query(Decimal("3.0"), ge=0),
+    rent_growth_pct: Decimal = Query(Decimal("2.0"), ge=0),
+    expense_growth_pct: Decimal = Query(Decimal("2.0"), ge=0),
+    selling_cost_pct: Decimal = Query(Decimal("6.0"), ge=0, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DealProjectionsResponse:
+    """Return year-by-year financial projections for a saved deal.
+
+    All query parameters are optional and override the projection assumptions:
+    - years: projection horizon (1–30, default 10)
+    - appreciation_pct: annual property value growth % (default 3.0)
+    - rent_growth_pct: annual rent increase % (default 2.0)
+    - expense_growth_pct: annual expense increase % (default 2.0)
+    - selling_cost_pct: cost to sell as % of sale price for IRR terminal value (default 6.0)
+    """
+    result = await db.execute(
+        select(Deal).where(
+            Deal.id == deal_id,
+            Deal.user_id == current_user.id,
+        )
+    )
+    deal = result.scalar_one_or_none()
+    if not deal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Deal not found",
+        )
+
+    # Resolve loan_amount: use stored value or infer from down_payment_pct.
+    # loan = purchase_price × (1 - down_payment_pct / 100) — the financed portion.
+    loan_amount: Decimal
+    if deal.loan_amount is not None:
+        loan_amount = deal.loan_amount
+    elif deal.down_payment_pct is not None:
+        loan_amount = (
+            deal.purchase_price * (1 - deal.down_payment_pct / 100)
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    else:
+        # Default 20% down → 80% financed
+        loan_amount = (deal.purchase_price * Decimal("0.80")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+
+    loan_term_years: int = deal.loan_term_years or 30
+    annual_interest_rate: Decimal = deal.interest_rate or Decimal("0")
+
+    # Resolve monthly_mortgage: use stored value or compute from loan terms.
+    monthly_mortgage: Decimal
+    if deal.monthly_mortgage is not None and deal.monthly_mortgage > 0:
+        monthly_mortgage = deal.monthly_mortgage
+    elif loan_amount > 0:
+        monthly_mortgage = calculate_monthly_mortgage(
+            loan_amount, annual_interest_rate, loan_term_years
+        )
+    else:
+        monthly_mortgage = Decimal("0")
+
+    # Resolve total_cash_invested: use stored computed value or reconstruct.
+    total_cash_invested: Decimal
+    if deal.total_cash_invested is not None and deal.total_cash_invested > 0:
+        total_cash_invested = deal.total_cash_invested
+    else:
+        down_pct = deal.down_payment_pct or Decimal("20")
+        down_payment = (deal.purchase_price * down_pct / 100).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        total_cash_invested = (
+            down_payment
+            + (deal.closing_costs or Decimal("0"))
+            + (deal.rehab_costs or Decimal("0"))
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    base_monthly_expenses = _compute_base_monthly_expenses(deal)
+
+    projection_result = compute_yearly_projections(
+        purchase_price=deal.purchase_price,
+        loan_amount=loan_amount,
+        annual_interest_rate=annual_interest_rate,
+        loan_term_years=loan_term_years,
+        monthly_mortgage=monthly_mortgage,
+        gross_monthly_rent=deal.gross_monthly_rent,
+        base_monthly_expenses=base_monthly_expenses,
+        total_cash_invested=total_cash_invested,
+        projection_years=years,
+        annual_appreciation_pct=appreciation_pct,
+        annual_rent_growth_pct=rent_growth_pct,
+        annual_expense_growth_pct=expense_growth_pct,
+        selling_cost_pct=selling_cost_pct,
+    )
+
+    return DealProjectionsResponse(
+        deal_id=deal.id,
+        deal_name=deal.deal_name,
+        parameters=ProjectionParameters(
+            projection_years=years,
+            annual_appreciation_pct=appreciation_pct,
+            annual_rent_growth_pct=rent_growth_pct,
+            annual_expense_growth_pct=expense_growth_pct,
+            selling_cost_pct=selling_cost_pct,
+        ),
+        irr_5_year=projection_result["irr_5yr"],
+        irr_10_year=projection_result["irr_10yr"],
+        yearly_projections=[
+            YearlyProjection(**row) for row in projection_result["yearly"]
+        ],
+    )
 
 
 @router.put("/{deal_id}", response_model=DealResponse)

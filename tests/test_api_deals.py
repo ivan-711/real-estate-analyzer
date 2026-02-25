@@ -5,6 +5,7 @@ Tests for Deal CRUD API endpoints.
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 from unittest.mock import patch
 
 from httpx import AsyncClient
@@ -417,3 +418,205 @@ async def test_deals_summary_unauthenticated(client: AsyncClient) -> None:
     """GET /api/v1/deals/summary without token returns 401."""
     response = await client.get("/api/v1/deals/summary")
     assert response.status_code == 401
+
+
+# ── Projections endpoint tests ────────────────────────────────────────────────
+
+
+async def test_get_projections_default_params(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_deal,
+) -> None:
+    """GET /projections with defaults returns 10 yearly entries and both IRR values."""
+    response = await client.get(
+        f"/api/v1/deals/{test_deal.id}/projections",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["deal_id"] == str(test_deal.id)
+    assert data["deal_name"] == "Sheboygan Duplex"
+    assert data["parameters"]["projection_years"] == 10
+
+    projections = data["yearly_projections"]
+    assert len(projections) == 10
+
+    # All required fields present and non-null in every year.
+    required_fields = [
+        "year", "property_value", "loan_balance", "equity",
+        "principal_paid", "interest_paid", "annual_gross_rent",
+        "annual_expenses", "annual_mortgage_payment",
+        "annual_net_cash_flow", "cumulative_cash_flow",
+    ]
+    for row in projections:
+        for field in required_fields:
+            assert field in row, f"Missing field: {field}"
+            assert row[field] is not None, f"Field is None: {field}"
+
+    # Year numbers are sequential 1–10.
+    assert [row["year"] for row in projections] == list(range(1, 11))
+
+    # IRR values are present (may be negative for this deal, but not None).
+    assert "irr_5_year" in data
+    assert "irr_10_year" in data
+
+
+async def test_get_projections_custom_years(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_deal,
+) -> None:
+    """GET /projections?years=5 returns exactly 5 yearly entries."""
+    response = await client.get(
+        f"/api/v1/deals/{test_deal.id}/projections?years=5",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["yearly_projections"]) == 5
+    assert data["parameters"]["projection_years"] == 5
+    # 10-year IRR is None when projection horizon is only 5 years.
+    assert data["irr_10_year"] is None
+
+
+async def test_get_projections_custom_appreciation(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_deal,
+) -> None:
+    """Year 10 property value reflects 5% annual compound appreciation."""
+    response = await client.get(
+        f"/api/v1/deals/{test_deal.id}/projections?years=10&appreciation_pct=5.0",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    projections = response.json()["yearly_projections"]
+
+    year10_value = float(projections[9]["property_value"])
+    expected = 220_000 * (1.05 ** 10)  # ≈ 358_356.82
+    assert abs(year10_value - expected) < 1.00
+
+
+async def test_get_projections_zero_appreciation(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_deal,
+) -> None:
+    """With 0% appreciation every year's property_value equals the purchase price."""
+    response = await client.get(
+        f"/api/v1/deals/{test_deal.id}/projections?appreciation_pct=0.0",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    projections = response.json()["yearly_projections"]
+
+    for row in projections:
+        assert abs(float(row["property_value"]) - 220_000) < 0.01
+
+
+async def test_get_projections_cash_purchase(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    db_session,
+    test_property,
+    test_user,
+) -> None:
+    """All-cash deal: loan_balance is 0 every year; equity equals property value."""
+    from app.models.deal import Deal
+
+    cash_deal = Deal(
+        property_id=test_property.id,
+        user_id=test_user.id,
+        deal_name="All Cash",
+        purchase_price=Decimal("200000"),
+        gross_monthly_rent=Decimal("1600"),
+        loan_amount=Decimal("0"),
+        monthly_mortgage=Decimal("0"),
+        total_cash_invested=Decimal("200000"),
+        down_payment_pct=Decimal("100"),
+    )
+    db_session.add(cash_deal)
+    await db_session.commit()
+    await db_session.refresh(cash_deal)
+
+    response = await client.get(
+        f"/api/v1/deals/{cash_deal.id}/projections",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    projections = response.json()["yearly_projections"]
+    assert len(projections) == 10
+
+    for row in projections:
+        assert float(row["loan_balance"]) == 0.0
+        assert float(row["interest_paid"]) == 0.0
+        assert float(row["principal_paid"]) == 0.0
+        # equity = property_value when no debt
+        assert abs(float(row["equity"]) - float(row["property_value"])) < 0.01
+
+
+async def test_get_projections_not_found(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    """GET /projections for a nonexistent deal returns 404."""
+    response = await client.get(
+        f"/api/v1/deals/{uuid.uuid4()}/projections",
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+
+
+async def test_get_projections_unauthorized(
+    client: AsyncClient,
+    test_deal,
+    create_user,
+) -> None:
+    """User B cannot access User A's deal projections (returns 404)."""
+    _, _, headers_b = await create_user(full_name="User B")
+
+    response = await client.get(
+        f"/api/v1/deals/{test_deal.id}/projections",
+        headers=headers_b,
+    )
+    assert response.status_code == 404
+
+
+async def test_get_projections_equity_increases(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_deal,
+) -> None:
+    """Equity at year 10 exceeds equity at year 1 (appreciation + principal paydown)."""
+    response = await client.get(
+        f"/api/v1/deals/{test_deal.id}/projections",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    projections = response.json()["yearly_projections"]
+
+    equity_year1 = float(projections[0]["equity"])
+    equity_year10 = float(projections[9]["equity"])
+    assert equity_year10 > equity_year1
+
+
+async def test_get_projections_irr_reasonable(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_deal,
+) -> None:
+    """IRR values, when present, fall within plausible real-estate bounds (-50% to +100%)."""
+    response = await client.get(
+        f"/api/v1/deals/{test_deal.id}/projections",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    if data["irr_5_year"] is not None:
+        assert -0.50 < float(data["irr_5_year"]) < 1.00
+
+    if data["irr_10_year"] is not None:
+        assert -0.50 < float(data["irr_10_year"]) < 1.00

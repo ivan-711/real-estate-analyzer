@@ -172,3 +172,34 @@ class DealResponse(BaseModel):
     risk_factors: Optional[dict]
     created_at: datetime
     updated_at: datetime
+
+
+class YearlyProjection(BaseModel):
+    year: int
+    property_value: Decimal
+    loan_balance: Decimal
+    equity: Decimal
+    principal_paid: Decimal
+    interest_paid: Decimal
+    annual_gross_rent: Decimal
+    annual_expenses: Decimal
+    annual_mortgage_payment: Decimal
+    annual_net_cash_flow: Decimal
+    cumulative_cash_flow: Decimal
+
+
+class ProjectionParameters(BaseModel):
+    projection_years: int
+    annual_appreciation_pct: Decimal
+    annual_rent_growth_pct: Decimal
+    annual_expense_growth_pct: Decimal
+    selling_cost_pct: Decimal
+
+
+class DealProjectionsResponse(BaseModel):
+    deal_id: uuid.UUID
+    deal_name: Optional[str]
+    parameters: ProjectionParameters
+    irr_5_year: Optional[Decimal]
+    irr_10_year: Optional[Decimal]
+    yearly_projections: list[YearlyProjection]

@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { MarketSnapshot } from "../types";
+import type { DealProjectionsResponse, MarketSnapshot } from "../types";
 
 const rawBaseURL =
   typeof import.meta.env.VITE_API_URL === "string" &&
@@ -75,6 +75,23 @@ export async function getMarketHistory(
 ): Promise<{ zip_code: string; snapshots: MarketSnapshot[] }> {
   const res = await api.get<{ zip_code: string; snapshots: MarketSnapshot[] }>(
     `/api/v1/markets/${zipCode}/history`,
+  );
+  return res.data;
+}
+
+export async function getDealProjections(
+  dealId: string,
+  params?: {
+    years?: number;
+    appreciation_pct?: number;
+    rent_growth_pct?: number;
+    expense_growth_pct?: number;
+    selling_cost_pct?: number;
+  },
+): Promise<DealProjectionsResponse> {
+  const res = await api.get<DealProjectionsResponse>(
+    `/api/v1/deals/${dealId}/projections`,
+    { params },
   );
   return res.data;
 }
