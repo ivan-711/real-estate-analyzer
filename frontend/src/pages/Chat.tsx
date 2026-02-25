@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api, { apiBaseURL, getToken } from "../lib/api";
 import type { ChatSessionListItem, ChatSessionResponse } from "../types";
+import AnimatedList from "../components/ui/AnimatedList";
 
 type DisplayMessage = { id?: string; role: string; content: string };
 
@@ -265,7 +266,7 @@ export default function Chat() {
               Send a message to start. Ask about your deals or portfolio.
             </p>
           )}
-          <ul className="space-y-4">
+          <AnimatedList className="space-y-4" staggerDelay={60}>
             {messages.map((m, i) => (
               <li
                 key={m.id ?? `msg-${i}`}
@@ -287,7 +288,7 @@ export default function Chat() {
                 </div>
               </li>
             ))}
-          </ul>
+          </AnimatedList>
           <div ref={messagesEndRef} />
         </div>
         {error && (

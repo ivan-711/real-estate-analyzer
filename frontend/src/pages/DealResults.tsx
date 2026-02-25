@@ -5,6 +5,8 @@ import api, { getDealProjections, getToken } from "../lib/api";
 import AmortizationChart from "../components/charts/AmortizationChart";
 import CashFlowChart from "../components/charts/CashFlowChart";
 import EquityBuildupChart from "../components/charts/EquityBuildupChart";
+import AnimatedContent from "../components/ui/AnimatedContent";
+import GradientText from "../components/ui/GradientText";
 import type {
   DealCreatePayload,
   DealPreviewPayload,
@@ -67,6 +69,12 @@ function riskColorClass(score: number | undefined): string {
   if (score <= 33) return "bg-green-light text-green-positive";
   if (score <= 66) return "bg-yellow-light text-yellow-moderate";
   return "bg-red-light text-red-negative";
+}
+
+function riskGradientColors(score: number): [string, string] {
+  if (score <= 33) return ["#22C55E", "#16A34A"];
+  if (score <= 66) return ["#F59E0B", "#D97706"];
+  return ["#EF4444", "#DC2626"];
 }
 
 /** Fixed-rate monthly payment. Principal in dollars, annualRatePercent e.g. 7, termYears e.g. 30. */
@@ -360,319 +368,343 @@ export default function DealResults() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-medium text-muted">Monthly cash flow</h2>
-          <p
-            className={`font-mono text-3xl font-bold tabular-nums sm:text-4xl ${mcFlow != null && mcFlow >= 0 ? "text-green-positive" : "text-red-negative"}`}
-          >
-            {formatCurrency(deal.monthly_cash_flow)}
-          </p>
+      <AnimatedContent delay={0}>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
+            <h2 className="text-sm font-medium text-muted">
+              Monthly cash flow
+            </h2>
+            <p
+              className={`font-mono text-3xl font-bold tabular-nums sm:text-4xl ${mcFlow != null && mcFlow >= 0 ? "text-green-positive" : "text-red-negative"}`}
+            >
+              {formatCurrency(deal.monthly_cash_flow)}
+            </p>
+          </div>
+          <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
+            <h2 className="text-sm font-medium text-muted">Risk score</h2>
+            <p className="font-mono text-3xl font-bold tabular-nums text-navy sm:text-4xl">
+              {score != null ? `Score: ${Math.round(score)}` : "—"}
+            </p>
+            <span
+              className={`mt-2 inline-block rounded-full px-3 py-1 text-sm font-medium ${riskColorClass(score)}`}
+            >
+              {score != null ? (
+                <GradientText
+                  colors={riskGradientColors(score)}
+                  animationSpeed={4}
+                >
+                  {riskLabel(score)}
+                </GradientText>
+              ) : (
+                riskLabel(score)
+              )}
+            </span>
+          </div>
         </div>
-        <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-medium text-muted">Risk score</h2>
-          <p className="font-mono text-3xl font-bold tabular-nums text-navy sm:text-4xl">
-            {score != null ? `Score: ${Math.round(score)}` : "—"}
-          </p>
-          <span
-            className={`mt-2 inline-block rounded-full px-3 py-1 text-sm font-medium ${riskColorClass(score)}`}
-          >
-            {riskLabel(score)}
-          </span>
-        </div>
-      </div>
+      </AnimatedContent>
 
-      <div className="mt-8 rounded-xl border border-border bg-white p-6 shadow-sm">
-        <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
-          Key metrics
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <div className="break-words">
-            <span className="text-sm text-muted">NOI (annual)</span>
-            <p className="font-mono font-semibold tabular-nums text-slate">
-              {formatCurrency(deal.noi)}
-            </p>
-          </div>
-          <div className="break-words">
-            <span className="text-sm text-muted">Cap rate</span>
-            <p className="font-mono font-semibold tabular-nums text-slate">
-              {formatPercent(deal.cap_rate)}
-            </p>
-          </div>
-          <div className="break-words">
-            <span className="text-sm text-muted">Cash-on-cash</span>
-            <p className="font-mono font-semibold tabular-nums text-slate">
-              {formatPercent(deal.cash_on_cash)}
-            </p>
-          </div>
-          <div className="break-words">
-            <span className="text-sm text-muted">DSCR</span>
-            <p className="font-mono font-semibold tabular-nums text-slate">
-              {formatNumber(deal.dscr)}
-            </p>
-          </div>
-          <div className="break-words">
-            <span className="text-sm text-muted">GRM</span>
-            <p className="font-mono font-semibold tabular-nums text-slate">
-              {formatNumber(deal.grm)}
-            </p>
-          </div>
-          <div className="break-words">
-            <span className="text-sm text-muted">Total cash invested</span>
-            <p className="font-mono font-semibold tabular-nums text-slate">
-              {formatCurrency(deal.total_cash_invested)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2">
-        <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
+      <AnimatedContent delay={150}>
+        <div className="mt-8 rounded-xl border border-border bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
-            Financing summary
+            Key metrics
           </h2>
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-muted">Purchase price</dt>
-              <dd className="font-mono font-semibold text-slate">
-                {formatCurrency(deal.purchase_price)}
-              </dd>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="break-words">
+              <span className="text-sm text-muted">NOI (annual)</span>
+              <p className="font-mono font-semibold tabular-nums text-slate">
+                {formatCurrency(deal.noi)}
+              </p>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-muted">Down payment</dt>
-              <dd className="font-mono font-semibold text-slate">
-                {formatCurrency(
-                  deal.purchase_price != null && deal.down_payment_pct != null
-                    ? Number(deal.purchase_price) *
-                        (Number(deal.down_payment_pct) / 100)
-                    : undefined,
-                )}
-              </dd>
+            <div className="break-words">
+              <span className="text-sm text-muted">Cap rate</span>
+              <p className="font-mono font-semibold tabular-nums text-slate">
+                {formatPercent(deal.cap_rate)}
+              </p>
             </div>
-            {(hasFinancingInputs && computedLoanAmount != null) ||
-            deal.loan_amount != null ? (
+            <div className="break-words">
+              <span className="text-sm text-muted">Cash-on-cash</span>
+              <p className="font-mono font-semibold tabular-nums text-slate">
+                {formatPercent(deal.cash_on_cash)}
+              </p>
+            </div>
+            <div className="break-words">
+              <span className="text-sm text-muted">DSCR</span>
+              <p className="font-mono font-semibold tabular-nums text-slate">
+                {formatNumber(deal.dscr)}
+              </p>
+            </div>
+            <div className="break-words">
+              <span className="text-sm text-muted">GRM</span>
+              <p className="font-mono font-semibold tabular-nums text-slate">
+                {formatNumber(deal.grm)}
+              </p>
+            </div>
+            <div className="break-words">
+              <span className="text-sm text-muted">Total cash invested</span>
+              <p className="font-mono font-semibold tabular-nums text-slate">
+                {formatCurrency(deal.total_cash_invested)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </AnimatedContent>
+
+      <AnimatedContent delay={250}>
+        <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2">
+          <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
+            <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
+              Financing summary
+            </h2>
+            <dl className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-muted">Loan amount</dt>
+                <dt className="text-muted">Purchase price</dt>
                 <dd className="font-mono font-semibold text-slate">
-                  {formatCurrency(loanAmountDisplay)}
+                  {formatCurrency(deal.purchase_price)}
                 </dd>
               </div>
-            ) : null}
-            {hasFinancingInputs || deal.monthly_mortgage != null ? (
               <div className="flex justify-between">
-                <dt className="text-muted">Monthly mortgage</dt>
+                <dt className="text-muted">Down payment</dt>
                 <dd className="font-mono font-semibold text-slate">
                   {formatCurrency(
-                    deal.monthly_mortgage != null
-                      ? Number(deal.monthly_mortgage)
-                      : (computedMonthlyMortgage ?? 0),
+                    deal.purchase_price != null && deal.down_payment_pct != null
+                      ? Number(deal.purchase_price) *
+                          (Number(deal.down_payment_pct) / 100)
+                      : undefined,
                   )}
                 </dd>
               </div>
-            ) : null}
-          </dl>
+              {(hasFinancingInputs && computedLoanAmount != null) ||
+              deal.loan_amount != null ? (
+                <div className="flex justify-between">
+                  <dt className="text-muted">Loan amount</dt>
+                  <dd className="font-mono font-semibold text-slate">
+                    {formatCurrency(loanAmountDisplay)}
+                  </dd>
+                </div>
+              ) : null}
+              {hasFinancingInputs || deal.monthly_mortgage != null ? (
+                <div className="flex justify-between">
+                  <dt className="text-muted">Monthly mortgage</dt>
+                  <dd className="font-mono font-semibold text-slate">
+                    {formatCurrency(
+                      deal.monthly_mortgage != null
+                        ? Number(deal.monthly_mortgage)
+                        : (computedMonthlyMortgage ?? 0),
+                    )}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </div>
+          <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
+            <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
+              Monthly expense breakdown
+            </h2>
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-muted">Gross rent</dt>
+                <dd className="font-mono text-slate">
+                  {formatCurrency(grossRent)}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted">Vacancy ({vacancyPct}%)</dt>
+                <dd className="font-mono text-red-negative">
+                  -{formatCurrency(vacancyLoss)}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted">Property tax</dt>
+                <dd className="font-mono text-red-negative">
+                  -{formatCurrency(propTax)}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted">Insurance</dt>
+                <dd className="font-mono text-red-negative">
+                  -{formatCurrency(insurance)}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted">Maintenance ({maintPct}%)</dt>
+                <dd className="font-mono text-red-negative">
+                  -{formatCurrency(maintenance)}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted">Management ({mgmtPct}%)</dt>
+                <dd className="font-mono text-red-negative">
+                  -{formatCurrency(management)}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted">Mortgage</dt>
+                <dd className="font-mono text-red-negative">
+                  -{formatCurrency(mortgage)}
+                </dd>
+              </div>
+              <div className="flex justify-between border-t border-border pt-2 font-medium">
+                <dt className="text-navy">Net cash flow</dt>
+                <dd
+                  className={`font-mono ${mcFlow != null && mcFlow >= 0 ? "text-green-positive" : "text-red-negative"}`}
+                >
+                  {formatCurrency(deal.monthly_cash_flow)}
+                </dd>
+              </div>
+            </dl>
+          </div>
         </div>
-        <div className="break-words rounded-xl border border-border bg-white p-6 shadow-sm">
-          <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
-            Monthly expense breakdown
-          </h2>
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-muted">Gross rent</dt>
-              <dd className="font-mono text-slate">
-                {formatCurrency(grossRent)}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted">Vacancy ({vacancyPct}%)</dt>
-              <dd className="font-mono text-red-negative">
-                -{formatCurrency(vacancyLoss)}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted">Property tax</dt>
-              <dd className="font-mono text-red-negative">
-                -{formatCurrency(propTax)}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted">Insurance</dt>
-              <dd className="font-mono text-red-negative">
-                -{formatCurrency(insurance)}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted">Maintenance ({maintPct}%)</dt>
-              <dd className="font-mono text-red-negative">
-                -{formatCurrency(maintenance)}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted">Management ({mgmtPct}%)</dt>
-              <dd className="font-mono text-red-negative">
-                -{formatCurrency(management)}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted">Mortgage</dt>
-              <dd className="font-mono text-red-negative">
-                -{formatCurrency(mortgage)}
-              </dd>
-            </div>
-            <div className="flex justify-between border-t border-border pt-2 font-medium">
-              <dt className="text-navy">Net cash flow</dt>
-              <dd
-                className={`font-mono ${mcFlow != null && mcFlow >= 0 ? "text-green-positive" : "text-red-negative"}`}
-              >
-                {formatCurrency(deal.monthly_cash_flow)}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </div>
+      </AnimatedContent>
 
-      <div className="mt-8 rounded-xl border border-border bg-white p-6 shadow-sm">
-        <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
-          IRR & equity
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="break-words">
-            <span className="text-sm text-muted">IRR 5 yr</span>
-            <p className="font-mono font-semibold tabular-nums text-slate">
-              {formatPercent(deal.irr_5yr)}
-            </p>
-          </div>
-          <div className="break-words">
-            <span className="text-sm text-muted">IRR 10 yr</span>
-            <p className="font-mono font-semibold tabular-nums text-slate">
-              {formatPercent(deal.irr_10yr)}
-            </p>
-          </div>
-          <div className="break-words">
-            <span className="text-sm text-muted">Equity buildup 5 yr</span>
-            <p className="font-mono font-semibold tabular-nums text-slate">
-              {formatCurrency(deal.equity_buildup_5yr)}
-            </p>
-          </div>
-          <div className="break-words">
-            <span className="text-sm text-muted">Equity buildup 10 yr</span>
-            <p className="font-mono font-semibold tabular-nums text-slate">
-              {formatCurrency(deal.equity_buildup_10yr)}
-            </p>
+      <AnimatedContent delay={350}>
+        <div className="mt-8 rounded-xl border border-border bg-white p-6 shadow-sm">
+          <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
+            IRR & equity
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="break-words">
+              <span className="text-sm text-muted">IRR 5 yr</span>
+              <p className="font-mono font-semibold tabular-nums text-slate">
+                {formatPercent(deal.irr_5yr)}
+              </p>
+            </div>
+            <div className="break-words">
+              <span className="text-sm text-muted">IRR 10 yr</span>
+              <p className="font-mono font-semibold tabular-nums text-slate">
+                {formatPercent(deal.irr_10yr)}
+              </p>
+            </div>
+            <div className="break-words">
+              <span className="text-sm text-muted">Equity buildup 5 yr</span>
+              <p className="font-mono font-semibold tabular-nums text-slate">
+                {formatCurrency(deal.equity_buildup_5yr)}
+              </p>
+            </div>
+            <div className="break-words">
+              <span className="text-sm text-muted">Equity buildup 10 yr</span>
+              <p className="font-mono font-semibold tabular-nums text-slate">
+                {formatCurrency(deal.equity_buildup_10yr)}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      </AnimatedContent>
 
       {projections && projections.yearly_projections.length > 0 && (
-        <div className="mt-8 rounded-xl border border-border bg-white p-6 shadow-sm">
-          <h2 className="mb-6 font-sans text-lg font-semibold text-navy">
-            {projections.parameters.projection_years}-Year Projections
-          </h2>
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <div>
-              <h3 className="mb-3 text-sm font-medium text-slate">
-                Equity Buildup
-              </h3>
-              <EquityBuildupChart data={projections.yearly_projections} />
+        <AnimatedContent delay={400}>
+          <div className="mt-8 rounded-xl border border-border bg-white p-6 shadow-sm">
+            <h2 className="mb-6 font-sans text-lg font-semibold text-navy">
+              {projections.parameters.projection_years}-Year Projections
+            </h2>
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+              <div>
+                <h3 className="mb-3 text-sm font-medium text-slate">
+                  Equity Buildup
+                </h3>
+                <EquityBuildupChart data={projections.yearly_projections} />
+              </div>
+              <div>
+                <h3 className="mb-3 text-sm font-medium text-slate">
+                  Annual Cash Flow
+                </h3>
+                <CashFlowChart data={projections.yearly_projections} />
+              </div>
+              <div>
+                <h3 className="mb-3 text-sm font-medium text-slate">
+                  Principal vs. Interest
+                </h3>
+                <AmortizationChart data={projections.yearly_projections} />
+              </div>
             </div>
-            <div>
-              <h3 className="mb-3 text-sm font-medium text-slate">
-                Annual Cash Flow
-              </h3>
-              <CashFlowChart data={projections.yearly_projections} />
-            </div>
-            <div>
-              <h3 className="mb-3 text-sm font-medium text-slate">
-                Principal vs. Interest
-              </h3>
-              <AmortizationChart data={projections.yearly_projections} />
-            </div>
+            {(projections.irr_5_year != null ||
+              projections.irr_10_year != null) && (
+              <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-4">
+                <div>
+                  <span className="text-sm text-muted">Projected IRR 5 yr</span>
+                  <p className="font-mono font-semibold tabular-nums text-slate">
+                    {projections.irr_5_year != null
+                      ? formatPercent(projections.irr_5_year * 100)
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted">
+                    Projected IRR 10 yr
+                  </span>
+                  <p className="font-mono font-semibold tabular-nums text-slate">
+                    {projections.irr_10_year != null
+                      ? formatPercent(projections.irr_10_year * 100)
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-          {(projections.irr_5_year != null ||
-            projections.irr_10_year != null) && (
-            <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-4">
-              <div>
-                <span className="text-sm text-muted">
-                  Projected IRR 5 yr
-                </span>
-                <p className="font-mono font-semibold tabular-nums text-slate">
-                  {projections.irr_5_year != null
-                    ? formatPercent(projections.irr_5_year * 100)
-                    : "—"}
-                </p>
-              </div>
-              <div>
-                <span className="text-sm text-muted">
-                  Projected IRR 10 yr
-                </span>
-                <p className="font-mono font-semibold tabular-nums text-slate">
-                  {projections.irr_10_year != null
-                    ? formatPercent(projections.irr_10_year * 100)
-                    : "—"}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+        </AnimatedContent>
       )}
 
       {deal.risk_factors && Object.keys(deal.risk_factors).length > 0 && (
-        <div className="mt-8 rounded-xl border border-border bg-white p-6 shadow-sm">
-          <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
-            Risk factor breakdown
-          </h2>
-          <ul className="space-y-3">
-            {Object.entries(deal.risk_factors).map(([key, val]) => {
-              type RiskFactor = { score: number; raw?: string | number | null };
-              const factor = (val ?? {}) as RiskFactor;
-              const score =
-                typeof factor.score === "number"
-                  ? factor.score
-                  : Number(factor.score) || 0;
-              const raw = factor.raw;
-              const pct = Math.min(100, Math.max(0, score));
-              const rawNum =
-                raw != null && raw !== ""
-                  ? typeof raw === "number"
-                    ? raw
-                    : Number(raw)
-                  : NaN;
-              const isPercentLike =
-                /vacancy|cap_rate|cash_on_cash|rate|pct|percent/i.test(key);
-              const rawFormatted = Number.isFinite(rawNum)
-                ? isPercentLike
-                  ? rawNum.toFixed(1)
-                  : rawNum.toFixed(2)
-                : null;
-              return (
-                <li key={key} className="flex flex-wrap items-center gap-4">
-                  <span className="w-40 shrink-0 text-sm text-slate">
-                    {key
-                      .replace(/_/g, " ")
-                      .replace(/\b\w/g, (c) => c.toUpperCase())}
-                  </span>
-                  <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-border">
-                    <div
-                      className="h-full rounded-full bg-blue-primary transition-all"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <span className="shrink-0 font-mono text-sm tabular-nums text-slate">
-                    Score: {score.toFixed(0)}
-                  </span>
-                  {rawFormatted != null && (
-                    <span
-                      className="w-full shrink-0 text-xs text-muted sm:w-auto"
-                      title="Raw metric"
-                    >
-                      raw: {rawFormatted}
+        <AnimatedContent delay={450}>
+          <div className="mt-8 rounded-xl border border-border bg-white p-6 shadow-sm">
+            <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
+              Risk factor breakdown
+            </h2>
+            <ul className="space-y-3">
+              {Object.entries(deal.risk_factors).map(([key, val]) => {
+                type RiskFactor = {
+                  score: number;
+                  raw?: string | number | null;
+                };
+                const factor = (val ?? {}) as RiskFactor;
+                const score =
+                  typeof factor.score === "number"
+                    ? factor.score
+                    : Number(factor.score) || 0;
+                const raw = factor.raw;
+                const pct = Math.min(100, Math.max(0, score));
+                const rawNum =
+                  raw != null && raw !== ""
+                    ? typeof raw === "number"
+                      ? raw
+                      : Number(raw)
+                    : NaN;
+                const isPercentLike =
+                  /vacancy|cap_rate|cash_on_cash|rate|pct|percent/i.test(key);
+                const rawFormatted = Number.isFinite(rawNum)
+                  ? isPercentLike
+                    ? rawNum.toFixed(1)
+                    : rawNum.toFixed(2)
+                  : null;
+                return (
+                  <li key={key} className="flex flex-wrap items-center gap-4">
+                    <span className="w-40 shrink-0 text-sm text-slate">
+                      {key
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (c) => c.toUpperCase())}
                     </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+                    <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-border">
+                      <div
+                        className="h-full rounded-full bg-blue-primary transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="shrink-0 font-mono text-sm tabular-nums text-slate">
+                      Score: {score.toFixed(0)}
+                    </span>
+                    {rawFormatted != null && (
+                      <span
+                        className="w-full shrink-0 text-xs text-muted sm:w-auto"
+                        title="Raw metric"
+                      >
+                        raw: {rawFormatted}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </AnimatedContent>
       )}
     </div>
   );
