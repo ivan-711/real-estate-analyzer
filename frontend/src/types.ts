@@ -159,6 +159,9 @@ export interface DealResponse {
   risk_factors?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  property_address?: string;
+  property_city?: string;
+  property_state?: string;
 }
 
 export interface DealSummaryResponse {

@@ -131,40 +131,55 @@ export default function DealsList() {
                 to={`/deals/${deal.id}`}
                 className="block rounded-xl border border-border bg-white p-6 shadow-sm no-underline transition hover:border-blue-primary hover:shadow"
               >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <h2 className="font-sans text-lg font-semibold text-navy">
-                    {deal.deal_name?.trim() || "Deal"}
-                  </h2>
-                  <span className="text-sm text-muted">
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h2 className="font-sans text-sm font-semibold text-navy truncate">
+                      {deal.property_address ??
+                        deal.deal_name?.trim() ??
+                        "Untitled Deal"}
+                    </h2>
+                    {(deal.property_city || deal.property_state) && (
+                      <p className="text-xs text-muted truncate">
+                        {[deal.property_city, deal.property_state]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-sm text-muted">
                     {formatDate(deal.created_at)}
                   </span>
                 </div>
-                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                  <span className="text-muted">Purchase:</span>
-                  <span className="font-mono tabular-nums text-slate">
-                    {formatCurrency(deal.purchase_price)}
-                  </span>
-                  <span className="text-muted">Rent:</span>
-                  <span className="font-mono tabular-nums text-slate">
-                    {formatCurrency(deal.gross_monthly_rent)}/mo
-                  </span>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted">Purchase</span>
+                    <span className="font-mono tabular-nums text-slate">
+                      {formatCurrency(deal.purchase_price)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted">Rent</span>
+                    <span className="font-mono tabular-nums text-slate">
+                      {formatCurrency(deal.gross_monthly_rent)}/mo
+                    </span>
+                  </div>
                   {deal.monthly_cash_flow != null && (
-                    <>
-                      <span className="text-muted">Cash flow:</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted">Cash flow</span>
                       <span
                         className={`font-mono tabular-nums ${Number(deal.monthly_cash_flow) >= 0 ? "text-green-positive" : "text-red-negative"}`}
                       >
                         {formatCurrency(Number(deal.monthly_cash_flow))}/mo
                       </span>
-                    </>
+                    </div>
                   )}
                   {deal.risk_score != null && (
-                    <>
-                      <span className="text-muted">Risk:</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted">Risk score</span>
                       <span className="font-mono tabular-nums text-slate">
-                        Score: {Math.round(Number(deal.risk_score))}
+                        {Math.round(Number(deal.risk_score))}
                       </span>
-                    </>
+                    </div>
                   )}
                 </div>
               </Link>

@@ -172,6 +172,9 @@ class DealResponse(BaseModel):
     risk_factors: Optional[dict]
     created_at: datetime
     updated_at: datetime
+    property_address: Optional[str] = None
+    property_city: Optional[str] = None
+    property_state: Optional[str] = None
 
 
 class YearlyProjection(BaseModel):

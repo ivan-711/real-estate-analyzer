@@ -417,15 +417,31 @@ async def list_deals(
     limit: int = Query(20, ge=1, le=100),
 ) -> list[DealResponse]:
     """List deals for the current user (filterable by status, property_id)."""
-    stmt = select(Deal).where(Deal.user_id == current_user.id)
+    stmt = (
+        select(Deal, Property)
+        .outerjoin(Property, Deal.property_id == Property.id)
+        .where(Deal.user_id == current_user.id)
+    )
     if status_filter is not None:
         stmt = stmt.where(Deal.status == status_filter)
     if property_id is not None:
         stmt = stmt.where(Deal.property_id == property_id)
     stmt = stmt.offset(skip).limit(limit)
     result = await db.execute(stmt)
-    deals = result.scalars().all()
-    return [DealResponse.model_validate(d) for d in deals]
+    rows = result.all()
+    responses = []
+    for deal, prop in rows:
+        r = DealResponse.model_validate(deal)
+        if prop:
+            r = r.model_copy(
+                update={
+                    "property_address": prop.address,
+                    "property_city": prop.city,
+                    "property_state": prop.state,
+                }
+            )
+        responses.append(r)
+    return responses
 
 
 @router.get("/summary", response_model=DealSummaryResponse)
@@ -517,19 +533,29 @@ async def get_deal(
     current_user: User = Depends(get_current_user),
 ) -> DealResponse:
     """Get a deal by ID. Returns 404 if not found or not owned by user."""
-    result = await db.execute(
-        select(Deal).where(
-            Deal.id == deal_id,
-            Deal.user_id == current_user.id,
-        )
+    stmt = (
+        select(Deal, Property)
+        .outerjoin(Property, Deal.property_id == Property.id)
+        .where(Deal.id == deal_id, Deal.user_id == current_user.id)
     )
-    deal = result.scalar_one_or_none()
-    if not deal:
+    result = await db.execute(stmt)
+    row = result.one_or_none()
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Deal not found",
         )
-    return DealResponse.model_validate(deal)
+    deal, prop = row
+    r = DealResponse.model_validate(deal)
+    if prop:
+        r = r.model_copy(
+            update={
+                "property_address": prop.address,
+                "property_city": prop.city,
+                "property_state": prop.state,
+            }
+        )
+    return r
 
 
 @router.get("/{deal_id}/projections", response_model=DealProjectionsResponse)

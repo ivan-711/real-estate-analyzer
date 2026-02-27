@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Link } from "react-router-dom";
 import api, { apiBaseURL, getToken } from "../lib/api";
 import type { ChatSessionListItem, ChatSessionResponse } from "../types";
@@ -89,6 +90,21 @@ async function streamChat(
         }
         lastEvent = null;
         lastData = null;
+      }
+    }
+  }
+  // Flush remaining buffer — SSE "done" event may lack trailing \n\n
+  if (buffer.trim()) {
+    const parsed = parseSSEEvent(buffer);
+    if (parsed?.event === "done") {
+      try {
+        donePayload = JSON.parse(parsed.data) as {
+          session_id: string;
+          user_message_id: string;
+          assistant_message_id: string;
+        };
+      } catch {
+        // ignore malformed done payload
       }
     }
   }
@@ -298,9 +314,15 @@ export default function Chat() {
                   <span className="text-xs font-medium text-muted">
                     {m.role === "user" ? "You" : "AI"}
                   </span>
-                  <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">
-                    {m.content}
-                  </p>
+                  {m.role === "assistant" ? (
+                    <div className="mt-0.5 break-words text-sm [&_p]:my-0.5 [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:my-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_strong]:font-semibold [&_strong]:text-navy [&_code]:font-mono [&_code]:text-xs [&_code]:bg-border [&_code]:px-1 [&_code]:rounded">
+                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">
+                      {m.content}
+                    </p>
+                  )}
                 </div>
               </li>
             ))}

@@ -217,9 +217,18 @@ export default function Dashboard() {
             // Shared card content — key goes on the outermost returned element
             const cardInner = (
               <div className="relative p-6">
-                <h3 className="font-sans text-lg font-semibold text-navy">
-                  {deal.deal_name?.trim() || "Deal"}
+                <h3 className="font-sans text-base font-semibold text-navy truncate">
+                  {deal.property_address ??
+                    deal.deal_name?.trim() ??
+                    "Untitled Deal"}
                 </h3>
+                {(deal.property_city || deal.property_state) && (
+                  <p className="text-xs text-muted truncate">
+                    {[deal.property_city, deal.property_state]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                )}
 
                 <div className="mt-3 space-y-2 text-sm">
                   <div className="flex items-center justify-between">
