@@ -7,6 +7,7 @@ import CashFlowChart from "../components/charts/CashFlowChart";
 import EquityBuildupChart from "../components/charts/EquityBuildupChart";
 import AnimatedContent from "../components/ui/AnimatedContent";
 import GradientText from "../components/ui/GradientText";
+import ClickSpark from "../components/ui/ClickSpark";
 import type {
   DealCreatePayload,
   DealPreviewPayload,
@@ -342,14 +343,16 @@ export default function DealResults() {
                 </Link>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    onClick={handleSaveDeal}
-                    disabled={saveLoading}
-                    className="rounded-lg bg-blue-primary px-4 py-2 text-sm font-medium text-white hover:bg-blue-light disabled:opacity-50"
-                  >
-                    {saveLoading ? "Saving…" : "Save deal"}
-                  </button>
+                  <ClickSpark sparkColor="#ffffff">
+                    <button
+                      type="button"
+                      onClick={handleSaveDeal}
+                      disabled={saveLoading}
+                      className="rounded-lg bg-blue-primary px-4 py-2 text-sm font-medium text-white hover:bg-blue-light disabled:opacity-50"
+                    >
+                      {saveLoading ? "Saving…" : "Save deal"}
+                    </button>
+                  </ClickSpark>
                   {saveError && (
                     <span className="text-sm text-red-negative">
                       {saveError}

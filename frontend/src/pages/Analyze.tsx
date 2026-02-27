@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api, { getToken } from "../lib/api";
+import ClickSpark from "../components/ui/ClickSpark";
 import type {
   DealCreatePayload,
   DealPreviewPayload,
@@ -199,8 +200,7 @@ export default function Analyze() {
       );
       navigate(`/deals/${dealRes.data.id}`);
     } catch (err: unknown) {
-      const errMessage =
-        err instanceof Error ? err.message : String(err ?? "");
+      const errMessage = err instanceof Error ? err.message : String(err ?? "");
       if (errMessage.includes("returned HTML")) {
         setError(
           "Guest preview is misconfigured. API base URL is pointing at the frontend. Fix VITE_API_URL.",
@@ -221,7 +221,9 @@ export default function Analyze() {
       if (
         (err as { response?: { status?: number } })?.response?.status === 401
       ) {
-        setError("Session expired. Log in again to save deals to your portfolio.");
+        setError(
+          "Session expired. Log in again to save deals to your portfolio.",
+        );
         return;
       }
       setError(
@@ -476,40 +478,42 @@ export default function Analyze() {
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-primary py-3 font-medium text-white hover:bg-blue-light disabled:opacity-50"
-        >
-          {loading ? (
-            <>
-              <svg
-                className="h-5 w-5 animate-spin"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              Analyzing…
-            </>
-          ) : (
-            "Analyze"
-          )}
-        </button>
+        <ClickSpark sparkColor="#ffffff" className="relative flex w-full">
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-primary py-3 font-medium text-white hover:bg-blue-light disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <svg
+                  className="h-5 w-5 animate-spin"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Analyzing…
+              </>
+            ) : (
+              "Analyze"
+            )}
+          </button>
+        </ClickSpark>
       </form>
     </div>
   );
