@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import csv
+import io
 import uuid
+from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Optional
 
@@ -25,6 +28,7 @@ from app.services.projections import compute_yearly_projections
 from app.services.risk_engine import RiskEngine
 from app.utils.financial import calculate_monthly_mortgage
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -68,6 +72,45 @@ CALCULATED_METRIC_FIELDS = (
     "equity_buildup_10yr",
 )
 
+CSV_HEADERS = [
+    "Property Address",
+    "City",
+    "State",
+    "Zip Code",
+    "Property Type",
+    "Bedrooms",
+    "Bathrooms",
+    "Square Footage",
+    "Year Built",
+    "Purchase Price",
+    "Down Payment %",
+    "Loan Amount",
+    "Interest Rate",
+    "Loan Term",
+    "Gross Monthly Rent",
+    "Other Monthly Income",
+    "Vacancy Rate %",
+    "Maintenance Rate %",
+    "Management Fee %",
+    "Property Tax (monthly)",
+    "Insurance (monthly)",
+    "HOA (monthly)",
+    "Utilities (monthly)",
+    "NOI",
+    "Cap Rate",
+    "Cash on Cash",
+    "Monthly Cash Flow",
+    "Annual Cash Flow",
+    "DSCR",
+    "GRM",
+    "Risk Score",
+    "IRR 5yr",
+    "IRR 10yr",
+    "Deal Name",
+    "Status",
+    "Created At",
+]
+
 
 def _apply_calculated_metrics(deal: Deal, metrics: dict) -> None:
     """Apply available calculated metrics to the deal model instance."""
@@ -100,13 +143,29 @@ def _compute_base_monthly_expenses(deal: Deal) -> Decimal:
     year-over-year by the expense growth rate.
     """
     rent = deal.gross_monthly_rent
-    vacancy_rate = deal.vacancy_rate_pct if deal.vacancy_rate_pct is not None else Decimal("5")
-    maintenance_rate = deal.maintenance_rate_pct if deal.maintenance_rate_pct is not None else Decimal("5")
-    management_rate = deal.management_fee_pct if deal.management_fee_pct is not None else Decimal("10")
+    vacancy_rate = (
+        deal.vacancy_rate_pct if deal.vacancy_rate_pct is not None else Decimal("5")
+    )
+    maintenance_rate = (
+        deal.maintenance_rate_pct
+        if deal.maintenance_rate_pct is not None
+        else Decimal("5")
+    )
+    management_rate = (
+        deal.management_fee_pct
+        if deal.management_fee_pct is not None
+        else Decimal("10")
+    )
 
-    vacancy_loss = (rent * vacancy_rate / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    maintenance = (rent * maintenance_rate / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    management = (rent * management_rate / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    vacancy_loss = (rent * vacancy_rate / 100).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    maintenance = (rent * maintenance_rate / 100).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    management = (rent * management_rate / 100).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
 
     return (
         vacancy_loss
@@ -151,6 +210,55 @@ def _build_inputs_from_data(data: DealCreate | DealPreviewRequest) -> dict:
         "hoa_monthly": data.hoa_monthly,
         "utilities_monthly": data.utilities_monthly,
     }
+
+
+def _fmt(val: Any, decimals: int = 2) -> str:
+    """Format a Decimal/int/float/None as a string with fixed decimal places."""
+    if val is None:
+        return ""
+    return f"{Decimal(str(val)):.{decimals}f}"
+
+
+def _deal_to_csv_row(deal: Deal, prop: Optional[Property]) -> list[str]:
+    """Build one CSV row from a Deal and its optional Property."""
+    return [
+        prop.address if prop else "",
+        prop.city if prop else "",
+        prop.state if prop else "",
+        prop.zip_code if prop else "",
+        prop.property_type if prop else "",
+        str(prop.bedrooms) if prop and prop.bedrooms is not None else "",
+        str(prop.bathrooms) if prop and prop.bathrooms is not None else "",
+        str(prop.square_footage) if prop and prop.square_footage is not None else "",
+        str(prop.year_built) if prop and prop.year_built is not None else "",
+        _fmt(deal.purchase_price),
+        _fmt(deal.down_payment_pct),
+        _fmt(deal.loan_amount),
+        _fmt(deal.interest_rate, 3),
+        str(deal.loan_term_years) if deal.loan_term_years is not None else "",
+        _fmt(deal.gross_monthly_rent),
+        _fmt(deal.other_monthly_income),
+        _fmt(deal.vacancy_rate_pct),
+        _fmt(deal.maintenance_rate_pct),
+        _fmt(deal.management_fee_pct),
+        _fmt(deal.property_tax_monthly),
+        _fmt(deal.insurance_monthly),
+        _fmt(deal.hoa_monthly),
+        _fmt(deal.utilities_monthly),
+        _fmt(deal.noi),
+        _fmt(deal.cap_rate),
+        _fmt(deal.cash_on_cash),
+        _fmt(deal.monthly_cash_flow),
+        _fmt(deal.annual_cash_flow),
+        _fmt(deal.dscr, 3),
+        _fmt(deal.grm),
+        _fmt(deal.risk_score),
+        _fmt(deal.irr_5yr),
+        _fmt(deal.irr_10yr),
+        deal.deal_name or "",
+        deal.status,
+        deal.created_at.strftime("%Y-%m-%d"),
+    ]
 
 
 @router.post("/preview", response_model=DealPreviewResponse)
@@ -326,9 +434,7 @@ async def get_deals_summary(
     current_user: User = Depends(get_current_user),
 ) -> DealSummaryResponse:
     """Portfolio KPI summary for the current user. Returns zeros/nulls when no deals."""
-    result = await db.execute(
-        select(Deal).where(Deal.user_id == current_user.id)
-    )
+    result = await db.execute(select(Deal).where(Deal.user_id == current_user.id))
     deals = result.scalars().all()
 
     if not deals:
@@ -371,6 +477,36 @@ async def get_deals_summary(
         total_equity=total_equity,
         active_deal_count=count,
         average_risk_score=avg_risk,
+    )
+
+
+@router.get("/export/csv", response_class=StreamingResponse)
+async def export_deals_csv(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    """Export all deals for current user as CSV."""
+    stmt = (
+        select(Deal, Property)
+        .outerjoin(Property, Deal.property_id == Property.id)
+        .where(Deal.user_id == current_user.id)
+        .order_by(Deal.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(CSV_HEADERS)
+    for deal, prop in rows:
+        writer.writerow(_deal_to_csv_row(deal, prop))
+
+    filename = f"midwestdealanalyzer-deals-{date.today().isoformat()}.csv"
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -506,6 +642,42 @@ async def get_deal_projections(
         yearly_projections=[
             YearlyProjection(**row) for row in projection_result["yearly"]
         ],
+    )
+
+
+@router.get("/{deal_id}/export/csv", response_class=StreamingResponse)
+async def export_deal_csv(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    """Export a single deal as CSV."""
+    stmt = (
+        select(Deal, Property)
+        .outerjoin(Property, Deal.property_id == Property.id)
+        .where(Deal.id == deal_id, Deal.user_id == current_user.id)
+    )
+    result = await db.execute(stmt)
+    row = result.one_or_none()
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Deal not found"
+        )
+    deal, prop = row
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(CSV_HEADERS)
+    writer.writerow(_deal_to_csv_row(deal, prop))
+
+    slug = prop.address if prop else deal.deal_name or str(deal_id)
+    slug = slug.lower().replace(" ", "-").replace("/", "-")[:40]
+    filename = f"deal-{slug}-{date.today().isoformat()}.csv"
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

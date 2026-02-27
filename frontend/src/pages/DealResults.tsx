@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { AxiosResponse } from "axios";
-import api, { getDealProjections, getToken } from "../lib/api";
+import api, { exportDealCsv, getDealProjections, getToken } from "../lib/api";
 import AmortizationChart from "../components/charts/AmortizationChart";
 import CashFlowChart from "../components/charts/CashFlowChart";
 import EquityBuildupChart from "../components/charts/EquityBuildupChart";
@@ -106,6 +106,7 @@ export default function DealResults() {
   const [error, setError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
   const [projections, setProjections] =
     useState<DealProjectionsResponse | null>(null);
 
@@ -361,6 +362,25 @@ export default function DealResults() {
                 </>
               )}
             </>
+          )}
+          {!isPreview && id && id !== "preview" && (
+            <button
+              type="button"
+              onClick={async () => {
+                setExportLoading(true);
+                try {
+                  await exportDealCsv(id);
+                } catch {
+                  /* silent */
+                } finally {
+                  setExportLoading(false);
+                }
+              }}
+              disabled={exportLoading}
+              className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-slate hover:bg-blue-subtle disabled:opacity-50"
+            >
+              {exportLoading ? "Exporting…" : "Export CSV"}
+            </button>
           )}
           <Link
             to="/analyze"

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import api, { getToken } from "../lib/api";
+import api, { exportAllDealsCsv, getToken } from "../lib/api";
 import type { DealResponse } from "../types";
 
 function formatCurrency(n: number | undefined): string {
@@ -30,6 +30,7 @@ export default function DealsList() {
   const [deals, setDeals] = useState<DealResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
     if (!getToken()) {
@@ -88,6 +89,22 @@ export default function DealsList() {
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-sans text-2xl font-bold text-navy">Saved deals</h1>
+        <button
+          onClick={async () => {
+            setExportLoading(true);
+            try {
+              await exportAllDealsCsv();
+            } catch {
+              /* silent */
+            } finally {
+              setExportLoading(false);
+            }
+          }}
+          disabled={exportLoading || deals.length === 0}
+          className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-slate hover:bg-blue-subtle disabled:opacity-50"
+        >
+          {exportLoading ? "Exporting…" : "Export CSV"}
+        </button>
         <Link
           to="/analyze"
           className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-slate no-underline hover:bg-blue-subtle"

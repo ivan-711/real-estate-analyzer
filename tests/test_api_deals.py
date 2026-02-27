@@ -359,7 +359,9 @@ async def test_deals_summary_single_deal(
     assert data["active_deal_count"] == 1
 
     if deal.get("monthly_cash_flow") is not None:
-        assert float(data["total_monthly_cash_flow"]) == float(deal["monthly_cash_flow"])
+        assert float(data["total_monthly_cash_flow"]) == float(
+            deal["monthly_cash_flow"]
+        )
     if deal.get("total_cash_invested") is not None:
         assert float(data["total_equity"]) == float(deal["total_cash_invested"])
     if deal.get("cap_rate") is not None:
@@ -397,20 +399,35 @@ async def test_deals_summary_multiple_deals(
     data = response.json()
     assert data["active_deal_count"] == 2
 
-    if deal_a.get("monthly_cash_flow") is not None and deal_b.get("monthly_cash_flow") is not None:
-        expected_cf = float(deal_a["monthly_cash_flow"]) + float(deal_b["monthly_cash_flow"])
+    if (
+        deal_a.get("monthly_cash_flow") is not None
+        and deal_b.get("monthly_cash_flow") is not None
+    ):
+        expected_cf = float(deal_a["monthly_cash_flow"]) + float(
+            deal_b["monthly_cash_flow"]
+        )
         assert abs(float(data["total_monthly_cash_flow"]) - expected_cf) < 0.02
 
-    if deal_a.get("total_cash_invested") is not None and deal_b.get("total_cash_invested") is not None:
-        expected_eq = float(deal_a["total_cash_invested"]) + float(deal_b["total_cash_invested"])
+    if (
+        deal_a.get("total_cash_invested") is not None
+        and deal_b.get("total_cash_invested") is not None
+    ):
+        expected_eq = float(deal_a["total_cash_invested"]) + float(
+            deal_b["total_cash_invested"]
+        )
         assert abs(float(data["total_equity"]) - expected_eq) < 0.02
 
     if deal_a.get("cap_rate") is not None and deal_b.get("cap_rate") is not None:
         expected_avg_cap = (float(deal_a["cap_rate"]) + float(deal_b["cap_rate"])) / 2
         assert abs(float(data["average_cap_rate"]) - expected_avg_cap) < 0.01
 
-    if deal_a.get("cash_on_cash") is not None and deal_b.get("cash_on_cash") is not None:
-        expected_avg_coc = (float(deal_a["cash_on_cash"]) + float(deal_b["cash_on_cash"])) / 2
+    if (
+        deal_a.get("cash_on_cash") is not None
+        and deal_b.get("cash_on_cash") is not None
+    ):
+        expected_avg_coc = (
+            float(deal_a["cash_on_cash"]) + float(deal_b["cash_on_cash"])
+        ) / 2
         assert abs(float(data["average_cash_on_cash"]) - expected_avg_coc) < 0.01
 
 
@@ -445,10 +462,17 @@ async def test_get_projections_default_params(
 
     # All required fields present and non-null in every year.
     required_fields = [
-        "year", "property_value", "loan_balance", "equity",
-        "principal_paid", "interest_paid", "annual_gross_rent",
-        "annual_expenses", "annual_mortgage_payment",
-        "annual_net_cash_flow", "cumulative_cash_flow",
+        "year",
+        "property_value",
+        "loan_balance",
+        "equity",
+        "principal_paid",
+        "interest_paid",
+        "annual_gross_rent",
+        "annual_expenses",
+        "annual_mortgage_payment",
+        "annual_net_cash_flow",
+        "cumulative_cash_flow",
     ]
     for row in projections:
         for field in required_fields:
@@ -495,7 +519,7 @@ async def test_get_projections_custom_appreciation(
     projections = response.json()["yearly_projections"]
 
     year10_value = float(projections[9]["property_value"])
-    expected = 220_000 * (1.05 ** 10)  # ≈ 358_356.82
+    expected = 220_000 * (1.05**10)  # ≈ 358_356.82
     assert abs(year10_value - expected) < 1.00
 
 
@@ -620,3 +644,64 @@ async def test_get_projections_irr_reasonable(
 
     if data["irr_10_year"] is not None:
         assert -0.50 < float(data["irr_10_year"]) < 1.00
+
+
+# ── CSV Export tests ──────────────────────────────────────────────────────────
+
+
+async def test_export_all_deals_csv_success(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_deal,
+) -> None:
+    """GET /export/csv returns 200 with text/csv and header + data row."""
+    response = await client.get("/api/v1/deals/export/csv", headers=auth_headers)
+    assert response.status_code == 200
+    assert "text/csv" in response.headers.get("content-type", "")
+    lines = response.text.strip().splitlines()
+    assert len(lines) >= 2  # header + at least one row
+    assert "Deal Name" in lines[0]
+    assert "Purchase Price" in lines[0]
+
+
+async def test_export_all_deals_csv_empty(
+    client: AsyncClient,
+    create_user,
+) -> None:
+    """User with 0 deals gets header-only CSV."""
+    _, _, headers = await create_user(full_name="Empty User")
+    response = await client.get("/api/v1/deals/export/csv", headers=headers)
+    assert response.status_code == 200
+    lines = response.text.strip().splitlines()
+    assert len(lines) == 1  # header row only
+
+
+async def test_export_single_deal_csv_success(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_deal,
+) -> None:
+    """GET /{deal_id}/export/csv returns 200 with attachment content-disposition."""
+    response = await client.get(
+        f"/api/v1/deals/{test_deal.id}/export/csv", headers=auth_headers
+    )
+    assert response.status_code == 200
+    assert "text/csv" in response.headers.get("content-type", "")
+    cd = response.headers.get("content-disposition", "")
+    assert "attachment" in cd
+    assert ".csv" in cd
+    lines = response.text.strip().splitlines()
+    assert len(lines) == 2  # header + one data row
+
+
+async def test_export_single_deal_csv_wrong_user(
+    client: AsyncClient,
+    test_deal,
+    create_user,
+) -> None:
+    """User B cannot export User A's deal — returns 404."""
+    _, _, headers_b = await create_user(full_name="User B")
+    response = await client.get(
+        f"/api/v1/deals/{test_deal.id}/export/csv", headers=headers_b
+    )
+    assert response.status_code == 404

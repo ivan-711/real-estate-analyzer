@@ -58,12 +58,16 @@ api.interceptors.response.use(
 
 export default api;
 
-export async function getMarketSnapshot(zipCode: string): Promise<MarketSnapshot> {
+export async function getMarketSnapshot(
+  zipCode: string,
+): Promise<MarketSnapshot> {
   const res = await api.get<MarketSnapshot>(`/api/v1/markets/${zipCode}`);
   return res.data;
 }
 
-export async function getMarketComparison(zips: string[]): Promise<MarketSnapshot[]> {
+export async function getMarketComparison(
+  zips: string[],
+): Promise<MarketSnapshot[]> {
   const res = await api.get<MarketSnapshot[]>(
     `/api/v1/markets/compare?zips=${zips.join(",")}`,
   );
@@ -94,4 +98,40 @@ export async function getDealProjections(
     { params },
   );
   return res.data;
+}
+
+export async function exportAllDealsCsv(): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${baseURL}/api/v1/deals/export/csv`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error("Export failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `midwestdealanalyzer-deals-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export async function exportDealCsv(dealId: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${baseURL}/api/v1/deals/${dealId}/export/csv`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error("Export failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const cd = res.headers.get("content-disposition") ?? "";
+  const match = cd.match(/filename="([^"]+)"/);
+  a.download = match?.[1] ?? `deal-${dealId}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
