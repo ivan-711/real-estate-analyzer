@@ -107,7 +107,7 @@ export default function DealsList() {
           </Link>
         </div>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {deals.map((deal) => (
             <li key={deal.id}>
               <Link

@@ -25,7 +25,7 @@ export default function EquityBuildupChart({ data }: Props) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height="100%">
       <AreaChart
         data={chartData}
         margin={{ top: 4, right: 8, left: 0, bottom: 0 }}

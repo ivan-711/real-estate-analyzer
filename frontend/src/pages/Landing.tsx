@@ -36,7 +36,7 @@ export default function Landing() {
         <div className="mt-10">
           <Link
             to={`/analyze?${sampleQuery}`}
-            className="inline-flex rounded-lg bg-blue-primary px-6 py-3 text-base font-medium text-white no-underline hover:bg-blue-light"
+            className="flex w-full justify-center rounded-lg bg-blue-primary px-6 py-3 text-base font-medium text-white no-underline hover:bg-blue-light sm:inline-flex sm:w-auto"
           >
             Try Sample Deal
           </Link>

@@ -108,6 +108,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const token = getToken();
 
@@ -151,6 +152,7 @@ export default function Chat() {
     setCurrentSessionId(null);
     setMessages([]);
     setError(null);
+    setSidebarOpen(false);
   };
 
   const handleSend = async () => {
@@ -222,8 +224,19 @@ export default function Chat() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col px-4 py-6 lg:flex-row lg:gap-6">
-      <aside className="mb-4 shrink-0 lg:w-56">
+    <div className="relative mx-auto flex max-w-6xl flex-col px-4 py-6 lg:flex-row lg:gap-6">
+      {/* Mobile sidebar toggle */}
+      <button
+        type="button"
+        className="mb-3 flex h-10 items-center gap-2 text-sm text-slate md:hidden"
+        onClick={() => setSidebarOpen((o) => !o)}
+      >
+        {sidebarOpen ? "✕ Close" : "☰ Chats"}
+      </button>
+
+      <aside
+        className={`shrink-0 lg:w-56 ${sidebarOpen ? "block" : "hidden"} mb-4 md:block`}
+      >
         <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-navy">Chats</h2>
@@ -243,7 +256,10 @@ export default function Chat() {
                 <li key={s.id}>
                   <button
                     type="button"
-                    onClick={() => setCurrentSessionId(s.id)}
+                    onClick={() => {
+                      setCurrentSessionId(s.id);
+                      setSidebarOpen(false);
+                    }}
                     className={`w-full rounded-lg px-2 py-1.5 text-left text-sm ${
                       currentSessionId === s.id
                         ? "bg-blue-subtle text-blue-primary"
@@ -260,7 +276,7 @@ export default function Chat() {
       </aside>
 
       <main className="flex min-h-[60vh] flex-1 flex-col rounded-xl border border-border bg-white shadow-sm">
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto px-3 py-4 pb-20 md:px-6 md:pb-4">
           {messages.length === 0 && !streaming && (
             <p className="text-muted">
               Send a message to start. Ask about your deals or portfolio.
@@ -296,7 +312,7 @@ export default function Chat() {
             <p className="text-sm text-red-negative">{error}</p>
           </div>
         )}
-        <div className="border-t border-border p-4">
+        <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-border bg-white p-3 md:static md:border-t-0 md:p-4">
           <form
             onSubmit={(e) => {
               e.preventDefault();

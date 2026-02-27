@@ -408,7 +408,7 @@ export default function DealResults() {
           <h2 className="mb-4 font-sans text-lg font-semibold text-navy">
             Key metrics
           </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <div className="break-words">
               <span className="text-sm text-muted">NOI (annual)</span>
               <p className="font-mono font-semibold tabular-nums text-slate">
@@ -601,19 +601,25 @@ export default function DealResults() {
                 <h3 className="mb-3 text-sm font-medium text-slate">
                   Equity Buildup
                 </h3>
-                <EquityBuildupChart data={projections.yearly_projections} />
+                <div className="h-48 md:h-[220px]">
+                  <EquityBuildupChart data={projections.yearly_projections} />
+                </div>
               </div>
               <div>
                 <h3 className="mb-3 text-sm font-medium text-slate">
                   Annual Cash Flow
                 </h3>
-                <CashFlowChart data={projections.yearly_projections} />
+                <div className="h-48 md:h-[220px]">
+                  <CashFlowChart data={projections.yearly_projections} />
+                </div>
               </div>
               <div>
                 <h3 className="mb-3 text-sm font-medium text-slate">
                   Principal vs. Interest
                 </h3>
-                <AmortizationChart data={projections.yearly_projections} />
+                <div className="h-48 md:h-[220px]">
+                  <AmortizationChart data={projections.yearly_projections} />
+                </div>
               </div>
             </div>
             {(projections.irr_5_year != null ||

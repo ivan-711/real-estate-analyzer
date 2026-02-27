@@ -78,7 +78,7 @@ export default function Dashboard() {
     return (
       <div className="mx-auto max-w-6xl px-4 py-12">
         <div className="mb-8 h-8 w-56 animate-pulse rounded bg-border" />
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-28 animate-pulse rounded-xl bg-border" />
           ))}
@@ -136,11 +136,11 @@ export default function Dashboard() {
       />
 
       {/* KPI cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
         <div className="rounded-xl border border-border bg-white p-6 shadow-sm">
           <p className="text-sm text-muted">Total Cash Flow</p>
           <p
-            className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${cashFlow >= 0 ? "text-green-positive" : "text-red-negative"}`}
+            className={`mt-1 font-mono text-2xl lg:text-4xl font-semibold tabular-nums ${cashFlow >= 0 ? "text-green-positive" : "text-red-negative"}`}
           >
             $<CountUp to={cashFlow} separator="," decimals={0} />
             /mo
@@ -149,7 +149,7 @@ export default function Dashboard() {
 
         <div className="rounded-xl border border-border bg-white p-6 shadow-sm">
           <p className="text-sm text-muted">Avg Cap Rate</p>
-          <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-navy">
+          <p className="mt-1 font-mono text-2xl lg:text-4xl font-semibold tabular-nums text-navy">
             {summary?.average_cap_rate != null ? (
               <>
                 <CountUp to={summary.average_cap_rate * 100} decimals={1} />%
@@ -162,7 +162,7 @@ export default function Dashboard() {
 
         <div className="rounded-xl border border-border bg-white p-6 shadow-sm">
           <p className="text-sm text-muted">Total Equity</p>
-          <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-navy">
+          <p className="mt-1 font-mono text-2xl lg:text-4xl font-semibold tabular-nums text-navy">
             $
             <CountUp
               to={summary?.total_equity ?? 0}
@@ -174,7 +174,7 @@ export default function Dashboard() {
 
         <div className="rounded-xl border border-border bg-white p-6 shadow-sm">
           <p className="text-sm text-muted">Active Deals</p>
-          <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-navy">
+          <p className="mt-1 font-mono text-2xl lg:text-4xl font-semibold tabular-nums text-navy">
             <CountUp to={summary?.active_deal_count ?? 0} decimals={0} />
           </p>
         </div>

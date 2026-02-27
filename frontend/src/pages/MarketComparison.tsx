@@ -52,7 +52,12 @@ const ROWS: RowDef[] = [
     format: "currency",
     bestDir: "lowest",
   },
-  { label: "Median Rent", key: "median_rent", format: "currency", bestDir: "highest" },
+  {
+    label: "Median Rent",
+    key: "median_rent",
+    format: "currency",
+    bestDir: "highest",
+  },
   {
     label: "Rent-to-Price Ratio",
     key: "rent_to_price_ratio",
@@ -81,7 +86,11 @@ const ROWS: RowDef[] = [
 
 // ─── Best-value index per row ─────────────────────────────────────────────────
 
-function bestIndex(snapshots: MarketSnapshot[], key: RowKey, dir: BestDir): number | null {
+function bestIndex(
+  snapshots: MarketSnapshot[],
+  key: RowKey,
+  dir: BestDir,
+): number | null {
   if (dir === null || key === "location") return null;
   const values = snapshots.map((s) => {
     const v = s[key as keyof MarketSnapshot];
@@ -106,7 +115,9 @@ function CellValue({
 }): React.ReactElement {
   if (row.key === "location") {
     const loc = [snap.city, snap.state].filter(Boolean).join(", ");
-    return <span className="font-medium text-navy">{loc || snap.zip_code}</span>;
+    return (
+      <span className="font-medium text-navy">{loc || snap.zip_code}</span>
+    );
   }
 
   const raw = snap[row.key as keyof MarketSnapshot] as number | null;
@@ -170,7 +181,10 @@ export default function MarketComparison(): React.ReactElement {
         <div className="mb-8 h-5 w-80 animate-pulse rounded bg-border" />
         <div className="mb-8 flex gap-3">
           {[1, 2].map((i) => (
-            <div key={i} className="h-10 w-32 animate-pulse rounded-lg bg-border" />
+            <div
+              key={i}
+              className="h-10 w-32 animate-pulse rounded-lg bg-border"
+            />
           ))}
         </div>
         <div className="overflow-x-auto rounded-xl border border-border bg-white shadow-sm">
@@ -206,7 +220,7 @@ export default function MarketComparison(): React.ReactElement {
           Enter 2–5 zip codes to compare
         </p>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
           {zipInputs.map((zip, idx) => {
             const touched = zip.length > 0;
             const invalid = touched && !isValidZip(zip);
@@ -360,9 +374,7 @@ export default function MarketComparison(): React.ReactElement {
                         <td
                           key={snap.id}
                           className={`border-b border-border px-5 py-3 ${
-                            best === colIdx
-                              ? "bg-green-50 font-medium"
-                              : ""
+                            best === colIdx ? "bg-green-50 font-medium" : ""
                           }`}
                         >
                           <CellValue snap={snap} row={row} />
@@ -387,8 +399,7 @@ export default function MarketComparison(): React.ReactElement {
               .filter((v, i, a) => a.indexOf(v) === i)
               .join(", ")}
             {" · "}
-            Snapshot date:{" "}
-            {snapshots[0]?.snapshot_date ?? "—"}
+            Snapshot date: {snapshots[0]?.snapshot_date ?? "—"}
           </p>
         </>
       )}
